@@ -30,6 +30,4 @@ cross a dangerous landscape to reach safe haven in a research station.
  
 ## Getting Started
  1. Get rebar, build it and replace the rebar that's in the repo
- 2. build and test
- 
-  make clean compile eunit 
+ 2. build and test: `make clean compile eunit` 
