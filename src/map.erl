@@ -25,6 +25,7 @@
 -endif.
 
 -define(TYPES, [forest, marsh, mountains, river, clear, hills, rough, station]).
+-define(MP,    [2, 3, 4, 4, 1, 3, 3, 1]).
 
 default_map() ->
     [
@@ -43,7 +44,7 @@ print_map([], _Line) ->
 print_map(Map, Line) when length(Map) == 1 ->
     [Last] = Map,
     print_line(Last, Line),
-    io:format("Drew last line: ~w~n", Last),
+    io:format("Drew last line: ~w~n", [Last]),
     print_map([], Line + 1);
 print_map([First | Rest], Line) ->
     io:format("Drawing line: ~b:~w~n", [Line, First]),
