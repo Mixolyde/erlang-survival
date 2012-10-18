@@ -1,3 +1,5 @@
 *.beam
 *.app
 *.eunit
+*.test
+ebin
