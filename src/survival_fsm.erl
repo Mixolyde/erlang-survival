@@ -10,7 +10,10 @@
 %% --------------------------------------------------------------------
 %% Include files
 %% --------------------------------------------------------------------
-
+-include("survival.hrl").
+-ifdef(TEST).
+  -include_lib("eunit/include/eunit.hrl").
+-endif.
 %% --------------------------------------------------------------------
 %% External exports
 -export([start/1, start_link/1, end_game/1]).
@@ -20,7 +23,7 @@
 -export([init/1, choose_direction/2, choose_direction/3, handle_event/3,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4]).
 
--record(state, {map, player, combat}).
+-record(state, {map, player, combat, day, time, scenario, options}).
 
 %% ====================================================================
 %% External functions
@@ -52,7 +55,8 @@ send_direction(FSM, Direction) when is_integer(Direction) ->
 %%          {stop, StopReason}
 %% --------------------------------------------------------------------
 init([Player, Map]) ->
-	FirstState = #state{map=Map, player=Player, combat={}},
+	FirstState = #state{map=Map, player=Player, combat={}, 
+						day=1, time=am, scenario=basic, options=[]},
 	notice(FirstState, "Initial FSM State created: ~p~n", [FirstState]),
     {ok, choose_direction, FirstState}.
 
@@ -142,10 +146,24 @@ initial_state_params(PlayerName) ->
 
 %% Send players a notice. This could be messages to their clients
 %% but for our purposes, outputting to the shell is enough.
-notice(#state{player=N}, Str, Args) ->
+notice(#state{player=#player{pname=N}}, Str, Args) ->
   io:format("~s: "++Str++"~n", [N|Args]).
  
 %% Unexpected allows to log unexpected messages
 unexpected(Msg, State) ->
   io:format("~p received unknown event ~p while in state ~p~n",
   [self(), Msg, State]).
+
+%% --------------------------------------------------------------------
+%% eunit tests
+%% --------------------------------------------------------------------
+-ifdef(TEST).
+  start_end_test() ->
+	{ok, FSM} = survival_fsm:start("Bob"),
+	?assert(is_pid(FSM)),
+	?assert(is_process_alive(FSM)),
+	ok = survival_fsm:end_game(FSM),
+	% give the fsm some time to shut down
+	timer:sleep(500),
+	?assertNot(is_process_alive(FSM)).
+-endif.

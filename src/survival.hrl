@@ -1,9 +1,16 @@
 %%% header includes for survival modules
 
--record(player,  {ws = 6, weapons = [], pname = "TestPlayer", loc = {1,1}}).
+-define(MAX_WOUNDS, 6).
+
+-define(WEAPON_LIST, [hands, spear, laser_carbine, auto_pistol, 
+					  light_sword, rifle, grenade_launcher, energy_blaster]).
+
+-define(ANIMAL_LIST, [maizar, corydal, ceekal, shenthe, teklek, genebrach, jalait, zeget]).
+
+-record(player,  {ws = ?MAX_WOUNDS, weapons = [], pname = "TestPlayer", loc = {1,1}}).
 
 -record(monster, {mname}).
 
--record(weapon,  {range, damage, maxammo}).
+-record(weapon,  {displayname, weight, melee, range, rounds, maxrounds}).
 
 
