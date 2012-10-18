@@ -3,3 +3,4 @@
 *.eunit
 *.test
 ebin
+doc

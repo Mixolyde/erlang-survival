@@ -3,22 +3,22 @@ REBAR := ./rebar
 .PHONY: all deps doc test clean release
 
 all: deps
-    $(REBAR) compile
+	$(REBAR) compile
 
 deps:
-    $(REBAR) get-deps
+	$(REBAR) get-deps
 
 doc:
-    $(REBAR) doc skip_deps=true
+	$(REBAR) doc skip_deps=true
 
 test:
-    $(REBAR) eunit skip_deps=true
+	$(REBAR) eunit skip_deps=true
 
 clean:
-    $(REBAR) clean
+	$(REBAR) clean
     
 analyze:
-    $(REBAR) analyze
+	$(REBAR) analyze
 
 release: all test
-    dialyzer --src src/*.erl deps/*/src/*.erl
+	dialyzer --src src/*.erl
