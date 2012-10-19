@@ -18,14 +18,20 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Basic map data structure
  
 ## TODO
+ * Map line length tests, even out map lines
+ * Text-based map display, mostly for testing/debugging
  * FSM states
  * FSM transitions
  * Single-player client
- * Multi-player server and client
- * Graphics
  * Combat mechanics
+ * Multi-player server and client
+ * Event handler for tracking errors
+ * Graphics
  * Advanced game modes
  * Options
+ * Procedural map generation
+ * cecho based client
+ * Web client
  * Pretty much everything
  
 ## Getting Started
