@@ -30,10 +30,16 @@
 default_map() ->
     [
       [forest, forest, forest, forest, forest, river, forest, rough, rough, rough, mountains, hills, hills,
-       forest, forest, hills, hills, forest, forest, forest], %row 1
+       forest, forest, hills, hills, forest, forest, forest], % row 1
+      [forest, rough, forest, hills, rough, river, marsh, rough, hills, mountains, mountains, hills, hills,
+	   hills, hills, hills, forest, hills, forest], % row 2
+	  [rough, rough, hills, hills, rough, river, rough, mountains, mountains, hills, mountains, mountains, hills,
+	   mountains, mountains, rough, hills, hills, forest, forest], % row 3
+	  [rough, rough, hills, mountains, rough, river, forest, mountains, mountains, mountains, mountains, mountains, mountains, mountains,
+	   rought, rough, mountains, hills, hills], % row 4
       [forest, marsh, mountains, river, clear, hills, rough],
-      [clear, river, hills, river, clear, hills, rough],
-      [clear, station, clear, river, clear, hills, rough]
+      [forest, forest, river, forest], % next to last row
+      [forest, stations, river] % last row
     ].
 
 print_map(Map) ->

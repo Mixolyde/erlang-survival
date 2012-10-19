@@ -21,6 +21,6 @@
 
 new_player() ->
 	#player{}.
-new_player(Name, Xloc) when is_list(Name), is_integer(Xloc)->
-    #player{pname=Name, loc={Xloc, 1}}.
+new_player(Name, Start) when is_list(Name), is_tuple(Start)->
+    #player{pname=Name, loc=Start}.
 
