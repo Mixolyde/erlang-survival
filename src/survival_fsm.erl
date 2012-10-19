@@ -17,7 +17,8 @@
 %% --------------------------------------------------------------------
 %% External exports
 -export([start/1, start_link/1, end_game/1]).
--export([send_direction/2]).
+-export([send_direction/2, send_weapon/2, send_display_legend/1, send_display_combat/1,
+		 send_display_map/1, send_display_weapons/1]).
 
 %% gen_fsm callbacks
 -export([init/1, choose_direction/2, choose_direction/3, handle_event/3,
@@ -39,10 +40,30 @@ end_game(FSM) ->
     gen_fsm:send_all_state_event(FSM, end_game),
     ok.
 
+%% Actual game interface commands
 send_direction(FSM, Direction) when is_integer(Direction) ->
-  io:format("Sending ~b direction to FSM~n", [Direction]),
-  gen_fsm:send_event(FSM, {direction, Direction}).
+    io:format("Sending ~b direction choice to FSM~n", [Direction]),
+    gen_fsm:sync_send_event(FSM, {direction, Direction}).
 
+send_weapon(FSM, Weapon) when is_integer(Weapon) ->
+	io:format("Sending ~b weapon choice to FSM~n", [Weapon]),
+    gen_fsm:sync_send_event(FSM, {weapon, Weapon}).
+
+send_display_map(FSM) ->
+	io:format("Sending map request to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {display_map}).
+
+send_display_combat(FSM) ->
+	io:format("Sending combat request to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {display_combat}).
+
+send_display_weapons(FSM) ->
+	io:format("Sending weapon list request to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {display_weapons}).
+
+send_display_legend(FSM) ->
+	io:format("Sending legend request to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {display_legend}).
 
 %% ====================================================================
 %% Server functions
@@ -140,8 +161,9 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 %% --------------------------------------------------------------------
 initial_state_params(PlayerName) ->
   Map = map:default_map(),                           % list of lists of terrain atoms
-  Xloc = random:uniform(length(lists:nth(1, Map))),  % random xloc across the top row of the map
-  Player = player:new_player(PlayerName, Xloc),      % new player record
+  % random start location from possible starts
+  Start = lists:nth(random:uniform(length(?STARTS)), ?STARTS),  
+  Player = player:new_player(PlayerName, Start),      % new player record
   [Player, Map].
 
 %% Send players a notice. This could be messages to their clients
@@ -149,7 +171,7 @@ initial_state_params(PlayerName) ->
 notice(#state{player=#player{pname=N}}, Str, Args) ->
   io:format("~s: "++Str++"~n", [N|Args]).
  
-%% Unexpected allows to log unexpected messages
+%% Logs unexpected messages
 unexpected(Msg, State) ->
   io:format("~p received unknown event ~p while in state ~p~n",
   [self(), Msg, State]).
