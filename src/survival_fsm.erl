@@ -110,8 +110,9 @@ choose_direction(_Event, _From, StateData) ->
 %%          {stop, Reason, NewStateData}
 %% --------------------------------------------------------------------
 handle_event(end_game, StateName, StateData) ->
-    notice(StateData, "received end_game event while in state ~p~n", [StateName]),
-    {stop, end_game, StateData};
+	WithoutMap = StateData#state{map=[]},
+    notice(StateData, "received end_game event while in state ~w~n", [StateName]),
+    {stop, end_game, WithoutMap};
 handle_event(Event, StateName, StateData) ->
 	unexpected(Event, handle_event),
     {next_state, StateName, StateData}.
