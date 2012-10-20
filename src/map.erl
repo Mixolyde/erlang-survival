@@ -18,13 +18,13 @@
 
 -compile([debug_info]).
 
--export([default_map/0, print_map/1, get_mp/1]).
+-export([default_map/0, print_map/1, print_legend/0, get_mp/1, get_char/1, get_terrain_at_loc/2]).
 
 -ifdef(TEST).
   -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--define(TYPES, [{forest, 2, $F}, {marsh, 3, $#}, {mountains, 4, $M}, 
+-define(TYPES, [{forest, 2, $F}, {marsh, 3, $S}, {mountains, 4, $M}, 
 				{river, 4, $W}, {clear, 1, $C}, {hills, 3, $H}, {rough, 3, $R}, 
                 {station, 1, $*}, {empty, infinity, $ }]).
 
@@ -35,6 +35,22 @@ get_mp(Terrain) ->
 get_char(Terrain) -> 
 	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TYPES),
 	Char.
+
+get_terrain_at_loc({X, Y}, Map) ->
+	lists:nth(X, lists:nth(Y, Map)).
+
+print_legend() ->
+	io:format("Directions:          Terrain:~n"),
+	io:format("  1   2              ~c = Forest (~b MP)   ~c = Water     (~b MP)~n",
+			 [map:get_char(forest), map:get_mp(forest), map:get_char(river), map:get_mp(river)]),
+	io:format("   \\ /               ~c = Rough  (~b MP)   ~c = Mountains (~b MP)~n",
+			 [map:get_char(rough), map:get_mp(rough), map:get_char(mountains), map:get_mp(mountains)]),
+	io:format("6 - * - 3            ~c = Hills  (~b MP)   ~c = Swamp     (~b MP)~n",
+			 [map:get_char(hills), map:get_mp(hills), map:get_char(marsh), map:get_mp(marsh)]),
+	io:format("   / \\               ~c = Clear  (~b MP)   ~c = Station   (~b MP)~n",
+			 [map:get_char(clear), map:get_mp(clear), map:get_char(station), map:get_mp(station)]),
+	io:format("  5   4              P = Player~n"),
+	ok.
 
 default_map() ->
     [ [forest, forest, forest, forest, forest, river, forest, rough, rough, rough, mountains, hills, hills,
@@ -102,6 +118,22 @@ print_line([First | Rest], Line) ->
 %% --------------------------------------------------------------------
 -ifdef(TEST).
 
+-define(SMALL_MAP, [[forest, rough, mountains], [hills, river, marsh], [empty, station, clear]]).
+
+get_loc_test() ->
+	Map = ?SMALL_MAP,
+	?assertEqual(forest,    get_terrain_at_loc({1, 1}, Map)),
+	?assertEqual(rough,     get_terrain_at_loc({2, 1}, Map)),
+	?assertEqual(mountains, get_terrain_at_loc({3, 1}, Map)),
+	?assertEqual(hills,     get_terrain_at_loc({1, 2}, Map)),
+	?assertEqual(river,     get_terrain_at_loc({2, 2}, Map)),
+	?assertEqual(marsh,     get_terrain_at_loc({3, 2}, Map)),
+	?assertEqual(empty,     get_terrain_at_loc({1, 3}, Map)),
+	?assertEqual(station,   get_terrain_at_loc({2, 3}, Map)),
+	?assertEqual(clear,     get_terrain_at_loc({3, 3}, Map)),
+	
+	ok.
+
 line_test() ->
   print_line([forest, rough, marsh], 1),
   io:format("Printed test line~n"),
@@ -145,5 +177,6 @@ get_mp_test() ->
 get_char_test() ->
 	[?assert(get_char(Terrain) == Char) || {Terrain, _MP, Char} <- ?TYPES],
 	ok.
+
 
 -endif.

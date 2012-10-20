@@ -58,8 +58,8 @@ purchase_list_test() ->
 	?assertEqual(length(all_weapons()) - 1, length(purchase_list())).
 
 new_weapons_test() ->
-	Weapon = new_weapon(spear),
-	?assert(erlang:is_record(Weapon, weapon)),
+	Spear = new_weapon(spear),
+	?assert(erlang:is_record(Spear, weapon)),
 			
 	Records = [new_weapon(Weapon) || Weapon <- ?WEAPON_LIST],
 	?assertEqual(length(all_weapons()), length(Records)),

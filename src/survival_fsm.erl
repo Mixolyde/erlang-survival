@@ -16,9 +16,9 @@
 -endif.
 %% --------------------------------------------------------------------
 %% External exports
--export([start/1, start_link/1, end_game/1]).
--export([send_direction/2, send_weapon/2, send_display_legend/1, send_display_combat/1,
-		 send_display_map/1, send_display_weapons/1]).
+-export([start/1, start_link/1, quit/1]).
+-export([send_direction_choice/2, send_weapon_choice/2, send_display_legend/1, send_display_status/1,
+		 send_display_map/1]).
 
 %% gen_fsm callbacks
 -export([init/1, choose_direction/2, choose_direction/3, handle_event/3,
@@ -35,17 +35,17 @@ start(PlayerName) ->
 start_link(PlayerName) ->
   gen_fsm:start_link(?MODULE, initial_state_params(PlayerName), []).
 
-end_game(FSM) ->
+quit(FSM) ->
 	%terminate the FSM
-    gen_fsm:send_all_state_event(FSM, end_game),
+    gen_fsm:sync_send_all_state_event(FSM, {quit}),
     ok.
 
 %% Actual game interface commands
-send_direction(FSM, Direction) when is_integer(Direction) ->
+send_direction_choice(FSM, Direction) when is_integer(Direction) ->
     io:format("Sending ~b direction choice to FSM~n", [Direction]),
     gen_fsm:sync_send_event(FSM, {direction, Direction}).
 
-send_weapon(FSM, Weapon) when is_integer(Weapon) ->
+send_weapon_choice(FSM, Weapon) when is_integer(Weapon) ->
 	io:format("Sending ~b weapon choice to FSM~n", [Weapon]),
     gen_fsm:sync_send_event(FSM, {weapon, Weapon}).
 
@@ -53,13 +53,9 @@ send_display_map(FSM) ->
 	io:format("Sending map request to FSM~n"),
     gen_fsm:sync_send_event(FSM, {display_map}).
 
-send_display_combat(FSM) ->
-	io:format("Sending combat request to FSM~n"),
-    gen_fsm:sync_send_event(FSM, {display_combat}).
-
-send_display_weapons(FSM) ->
-	io:format("Sending weapon list request to FSM~n"),
-    gen_fsm:sync_send_event(FSM, {display_weapons}).
+send_display_status(FSM) ->
+	io:format("Sending status request to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {display_status}).
 
 send_display_legend(FSM) ->
 	io:format("Sending legend request to FSM~n"),
@@ -78,7 +74,7 @@ send_display_legend(FSM) ->
 init([Player, Map]) ->
 	FirstState = #state{map=Map, player=Player, combat={}, 
 						day=1, time=am, scenario=basic, options=[]},
-	notice(FirstState, "Initial FSM State created: ~p~n", [FirstState]),
+	notice(FirstState, "Initial FSM State created: ~p~n", [printable_state(FirstState)]),
     {ok, choose_direction, FirstState}.
 
 %% --------------------------------------------------------------------
@@ -99,7 +95,16 @@ choose_direction(_Event, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
-choose_direction(_Event, _From, StateData) ->
+choose_direction({display_status}, _From, StateData) ->
+	display_status(StateData),
+    Reply = ok,
+    {reply, Reply, choose_direction, StateData};
+choose_direction({display_legend}, _From, StateData) ->
+	display_legend(StateData),
+    Reply = ok,
+    {reply, Reply, choose_direction, StateData};
+choose_direction({display_map}, _From, StateData) ->
+	display_map(StateData),
     Reply = ok,
     {reply, Reply, choose_direction, StateData}.
 
@@ -109,10 +114,6 @@ choose_direction(_Event, _From, StateData) ->
 %%          {next_state, NextStateName, NextStateData, Timeout} |
 %%          {stop, Reason, NewStateData}
 %% --------------------------------------------------------------------
-handle_event(end_game, StateName, StateData) ->
-	WithoutMap = StateData#state{map=[]},
-    notice(StateData, "received end_game event while in state ~w~n", [StateName]),
-    {stop, end_game, WithoutMap};
 handle_event(Event, StateName, StateData) ->
 	unexpected(Event, handle_event),
     {next_state, StateName, StateData}.
@@ -126,6 +127,9 @@ handle_event(Event, StateName, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+handle_sync_event({quit}, _From, StateName, StateData) ->
+    notice(StateData, "received quit event while in state ~w~n", [StateName]),
+    {stop, normal, ok, printable_state(StateData)};
 handle_sync_event(Event, _From, StateName, StateData) ->
 	unexpected(Event, handle_sync_event),
     Reply = ok,
@@ -146,7 +150,9 @@ handle_info(Info, StateName, StateData) ->
 %% Purpose: Shutdown the fsm
 %% Returns: any
 %% --------------------------------------------------------------------
-terminate(_Reason, _StateName, _StatData) ->
+terminate(Reason, StateName, StateData) ->
+	notice(StateData, "Terminating FSM while in state ~w because: ~w~n", 
+		   [StateName, Reason]),
     ok.
 
 %% --------------------------------------------------------------------
@@ -167,26 +173,68 @@ initial_state_params(PlayerName) ->
   Player = player:new_player(PlayerName, Start),      % new player record
   [Player, Map].
 
-%% Send players a notice. This could be messages to their clients
-%% but for our purposes, outputting to the shell is enough.
+% Send players a notice. This could be messages to their clients
+% but for our purposes, outputting to the shell is enough.
 notice(#state{player=#player{pname=N}}, Str, Args) ->
   io:format("~s: "++Str++"~n", [N|Args]).
  
-%% Logs unexpected messages
+% Logs unexpected messages
 unexpected(Msg, State) ->
   io:format("~p received unknown event ~p while in state ~p~n",
   [self(), Msg, State]).
+
+% Strip the map out of the state for quick debug printing
+printable_state(StateData) ->
+	StateData#state{map=[]}.
+
+% internal call for displaying the map, in case of future changes
+display_map(#state{map = Map}) -> 
+	map:print_map(Map).
+
+display_legend(_StateData) ->
+	map:print_legend(),
+	ok.
+
+display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Weapons, ws=Wounds}}) ->
+	io:format("Player: ~s~n~w Day-~b WS:~b~n", [Name, Time, Day, Wounds]),
+	io:format("Weapons:~n"),
+	[io:format("~s Rounds:~b~n", 
+			   [Weap#weapon.displayname, 
+				Weap#weapon.rounds]) || Weap <- Weapons],
+	ok.
 
 %% --------------------------------------------------------------------
 %% eunit tests
 %% --------------------------------------------------------------------
 -ifdef(TEST).
+  test_start() ->
+	{ok, Game} = survival_fsm:start("Survival FSM"),
+	Game.
+
+  test_end(Game) ->
+	ok = survival_fsm:quit(Game).
+
   start_end_test() ->
-	{ok, FSM} = survival_fsm:start("Bob"),
+	{ok, FSM} = survival_fsm:start("Survival FSM"),
 	?assert(is_pid(FSM)),
 	?assert(is_process_alive(FSM)),
-	ok = survival_fsm:end_game(FSM),
-	% give the fsm some time to shut down
-	timer:sleep(500),
+	% sync call, shouldn't need time to shutdown
+	ok = survival_fsm:quit(FSM),
 	?assertNot(is_process_alive(FSM)).
+
+  display_test() ->
+	FSM = test_start(),
+    send_display_legend(FSM),
+	send_display_map(FSM),
+	send_display_status(FSM),
+	test_end(FSM).
+
+  display_status_test() ->
+	Player = player:new_player(),
+	Map = map:default_map(),
+    State = #state{map=Map, player=Player, combat={}, 
+						day=1, time=am, scenario=basic, options=[]},
+
+	ok = display_status(State).
+
 -endif.

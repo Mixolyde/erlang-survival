@@ -15,11 +15,11 @@ cross a dangerous landscape to reach safe haven in a research station.
  * New weapon and player record creators
  * Start/stop of the FSM
  * Eunit tests started for weapons and FSM
- * Basic map data structure
+ * Basic map data structure and map line length tests
  
 ## TODO
- * Map line length tests, even out map lines
  * Text-based map display, mostly for testing/debugging
+ * ANSI colors for map, legend
  * FSM states
  * FSM transitions
  * Single-player client
