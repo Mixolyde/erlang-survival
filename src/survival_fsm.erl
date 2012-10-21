@@ -188,19 +188,20 @@ printable_state(StateData) ->
 	StateData#state{map=[]}.
 
 % internal call for displaying the map, in case of future changes
-display_map(#state{map = Map}) -> 
-	map:print_map(Map).
+display_map(#state{map = Map, player = Player}) -> 
+	map:print_map_and_player(Map, Player).
 
 display_legend(_StateData) ->
 	map:print_legend(),
 	ok.
 
 display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Weapons, ws=Wounds}}) ->
-	io:format("Player: ~s~n~w Day-~b WS:~b~n", [Name, Time, Day, Wounds]),
+	io:format("Player: ~s~nDay-~b Time:~s WS:~b~n", 
+			  [Name, Day, string:to_upper(atom_to_list(Time)), Wounds]),
 	io:format("Weapons:~n"),
-	[io:format("~s Rounds:~b~n", 
+	[io:format("~s Rounds:~s~n", 
 			   [Weap#weapon.displayname, 
-				Weap#weapon.rounds]) || Weap <- Weapons],
+				Weap#weapon.rounds]) || {_Ref, Weap} <- Weapons],
 	ok.
 
 %% --------------------------------------------------------------------

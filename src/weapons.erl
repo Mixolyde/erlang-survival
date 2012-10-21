@@ -21,21 +21,21 @@
 %%
 
 new_weapon(spear) ->
-	#weapon{displayname="Spear", maxrounds=unlimited, rounds=unlimited, melee=3, range=na, weight=1};
+	#weapon{atom=spear, displayname="Spear", maxrounds=unlimited, rounds=unlimited, melee=3, range=na, weight=1};
 new_weapon(laser_carbine) ->
-	#weapon{displayname="Laser Carbine", weight=4, melee=na, range=5, maxrounds=7, rounds=7};
+	#weapon{atom=laser_carbine, displayname="Laser Carbine", weight=4, melee=na, range=5, maxrounds=7, rounds=7};
 new_weapon(auto_pistol) ->
-	#weapon{displayname="Auto Pistol", weight=1, melee=4, range=2, maxrounds=10, rounds=10};
+	#weapon{atom=auto_pistol, displayname="Auto Pistol", weight=1, melee=4, range=2, maxrounds=10, rounds=10};
 new_weapon(lightsword) ->
-	#weapon{displayname="Lightsword", weight=2, melee=5, range=na, maxrounds=6, rounds=6};
+	#weapon{atom=lightsword, displayname="Lightsword", weight=2, melee=5, range=na, maxrounds=6, rounds=6};
 new_weapon(rifle) ->
-	#weapon{displayname="Rifle", weight=3, melee=na, range=4, maxrounds=8, rounds=8};
+	#weapon{atom=rifle, displayname="Rifle", weight=3, melee=na, range=4, maxrounds=8, rounds=8};
 new_weapon(grenade_launcher) ->
-	#weapon{displayname="Grenade Launcher", weight=5, melee=na, range=8, maxrounds=5, rounds=5};
+	#weapon{atom=grenade_launcher, displayname="Grenade Launcher", weight=5, melee=na, range=8, maxrounds=5, rounds=5};
 new_weapon(energy_blaster) ->
-	#weapon{displayname="Energy Blaster", weight=6, melee=na, range=9, maxrounds=3, rounds=3};
+	#weapon{atom=energy_blaster, displayname="Energy Blaster", weight=6, melee=na, range=9, maxrounds=3, rounds=3};
 new_weapon(hands) ->
-	#weapon{displayname="Hands", maxrounds=unlimited, rounds=unlimited, melee=0, range=na, weight=0};
+	#weapon{atom=hands, displayname="Hands", maxrounds=unlimited, rounds=unlimited, melee=0, range=na, weight=0};
 new_weapon(_Any) ->
 	error({unknown_weapon_type, _Any}).
 

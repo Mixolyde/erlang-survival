@@ -18,8 +18,9 @@
 
 -compile([debug_info]).
 
--export([default_map/0, print_map/1, print_legend/0, get_mp/1, get_char/1, get_terrain_at_loc/2]).
+-export([default_map/0, print_map_and_player/2, print_legend/0, get_mp/1, get_char/1, get_terrain_at_loc/2]).
 
+-include("survival.hrl").
 -ifdef(TEST).
   -include_lib("eunit/include/eunit.hrl").
 -endif.
@@ -92,25 +93,30 @@ default_map() ->
 
 dup(Count, Terrain) -> lists:duplicate(Count, Terrain).
 
-print_map(Map) ->
-    print_map(Map, 1).
+print_map_and_player(Map, #player{loc=Loc}) ->
+	print_map(Map, 1, Loc).
 
-print_map([], _Line) ->
+print_map([], _Line, _Loc) ->
     % io:format("Finished drawing."),
     ok;
-print_map([First | Rest], Line) when Line rem 2 == 0->
+print_map([First | Rest], Line, Loc) when Line rem 2 == 0->
     io:format(" "),    
-    print_line(First, Line),
-    print_map(Rest, Line+1);
-print_map([First | Rest], Line) ->
-    print_line(First, Line),
-    print_map(Rest, Line+1).
+    print_line_and_continue([First | Rest], Line, Loc);
+print_map([First | Rest], Line, Loc) ->
+    print_line_and_continue([First | Rest], Line, Loc).
 
-print_line([], _Line) ->
+print_line_and_continue([First | Rest], Line, Loc) ->
+    print_line(First, Line, 1, Loc),
+    print_map(Rest, Line+1, Loc).
+
+print_line([], _Line, _CharIndex, _Loc) ->
     io:format("~n");
-print_line([First | Rest], Line) ->
+print_line([_First | Rest], Line, CharIndex, {CharIndex, Line}) ->
+    io:format("P "),
+    print_line(Rest, Line, CharIndex + 1, {CharIndex, Line});
+print_line([First | Rest], AnyLine, AnyIndex, {CharIndex, Line}) ->
     io:format("~c ", [get_char(First)]),
-    print_line(Rest, Line).
+    print_line(Rest, AnyLine, AnyIndex + 1, {CharIndex, Line}).
 
 
 %% --------------------------------------------------------------------
@@ -135,22 +141,22 @@ get_loc_test() ->
 	ok.
 
 line_test() ->
-  print_line([forest, rough, marsh], 1),
+  print_line([forest, rough, marsh], 1, 1, {2,3}),
   io:format("Printed test line~n"),
   ok.
   
 print_map_test() ->
   Twolines = [[forest, rough, marsh], [forest, rough, marsh]],
-  print_map(Twolines, 1),
+  print_map(Twolines, 1, {1, 1}),
   ok.
 
 print_empty_map_test() ->
-  print_map([], 1),
+  print_map([], 1, {1, 2}),
   ok.
 
 print_map_last_line_test() ->
   Oneline = [[forest, rough, marsh]],
-  print_map(Oneline, 1),
+  print_map(Oneline, 1, {3, 1}),
   ok.
 
 map_line_length_test() ->
