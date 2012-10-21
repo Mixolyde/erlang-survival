@@ -10,7 +10,7 @@
 %%%---------------------------------------------------------------------
 
 
--module(player).
+-module(survival_player).
 -author("Brian E. Williams").
 
 -compile([debug_info]).
@@ -22,7 +22,7 @@
 new_player() ->
 	new_player("Test Player", {1,1}).
 new_player(Name, Start) when is_list(Name), is_tuple(Start)->
-    #player{pname=Name, loc=Start, weapons = [{make_ref(), weapons:new_weapon(hands)}]}.
+    #player{pname=Name, loc=Start, weapons = [{make_ref(), survival_weapons:new_weapon(hands)}]}.
 
 add_weapon(Player = #player{weapons = Weapons}, Weapon = #weapon{atom = Atom, maxrounds = MaxRounds}) 
   when is_record(Player, player), is_record(Weapon, weapon), Atom /= hands ->
@@ -51,9 +51,9 @@ new_player_test() ->
 
 add_remove_weapon_test() ->
 	Player = new_player("EUnit Test Player", {5, 6}),
-	{UpdatedPlayer, Ref} = add_weapon(Player, weapons:new_weapon(spear)),
+	{UpdatedPlayer, Ref} = add_weapon(Player, survival_weapons:new_weapon(spear)),
 	?assertEqual(2, length(UpdatedPlayer#player.weapons)),
-	?assertEqual({Ref, weapons:new_weapon(spear)}, lists:nth(2, UpdatedPlayer#player.weapons)),
+	?assertEqual({Ref, survival_weapons:new_weapon(spear)}, lists:nth(2, UpdatedPlayer#player.weapons)),
 	RemovedPlayer = remove_weapon(UpdatedPlayer, Ref),
 	?assertEqual(1, length(RemovedPlayer#player.weapons)),
 	ok.
@@ -63,7 +63,7 @@ total_weight_test() ->
 	?assertEqual(0, total_weight(Player)),
 	LoadedPlayer = lists:foldl(
 	  fun(Weapon, Acc) -> 
-			  {NewPlayer, _Ref} = add_weapon(Acc, weapons:new_weapon(Weapon)),
+			  {NewPlayer, _Ref} = add_weapon(Acc, survival_weapons:new_weapon(Weapon)),
 			  NewPlayer end, 
       Player, [spear, auto_pistol, lightsword]),
     ?assertEqual(4, total_weight(LoadedPlayer)).

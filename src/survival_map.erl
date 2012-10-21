@@ -1,19 +1,14 @@
 %%%---------------------------------------------------------------------
-%%% Description module map
+%%% Description module survival_map
 %%%---------------------------------------------------------------------
 %%% Creates a map for the game and provides methods for displaying and
 %%% updating.
 %%%---------------------------------------------------------------------
 %%% Exports
 %%%---------------------------------------------------------------------
-%%% default_map()
-%%%   returns the default map
-%%% print_map(Map)
-%%%   prints the given map, map must be a list of lists of terrain
-%%%   types 
 %%%---------------------------------------------------------------------
 
--module(map).
+-module(survival_map).
 -author("Brian E. Williams").
 
 -compile([debug_info]).
@@ -27,7 +22,7 @@
 
 -define(TYPES, [{forest, 2, $F}, {marsh, 3, $S}, {mountains, 4, $M}, 
 				{river, 4, $W}, {clear, 1, $C}, {hills, 3, $H}, {rough, 3, $R}, 
-                {station, 1, $*}, {empty, infinity, $ }]).
+                {station, 1, $*}, {empty, infinity, $\s}]).
 
 get_mp(Terrain) -> 
 	{Terrain, MP, _Char} = lists:keyfind(Terrain, 1, ?TYPES),
@@ -43,13 +38,13 @@ get_terrain_at_loc({X, Y}, Map) ->
 print_legend() ->
 	io:format("Directions:          Terrain:~n"),
 	io:format("  1   2              ~c = Forest (~b MP)   ~c = Water     (~b MP)~n",
-			 [map:get_char(forest), map:get_mp(forest), map:get_char(river), map:get_mp(river)]),
+			 [survival_map:get_char(forest), survival_map:get_mp(forest), survival_map:get_char(river), survival_map:get_mp(river)]),
 	io:format("   \\ /               ~c = Rough  (~b MP)   ~c = Mountains (~b MP)~n",
-			 [map:get_char(rough), map:get_mp(rough), map:get_char(mountains), map:get_mp(mountains)]),
+			 [survival_map:get_char(rough), survival_map:get_mp(rough), survival_map:get_char(mountains), survival_map:get_mp(mountains)]),
 	io:format("6 - * - 3            ~c = Hills  (~b MP)   ~c = Swamp     (~b MP)~n",
-			 [map:get_char(hills), map:get_mp(hills), map:get_char(marsh), map:get_mp(marsh)]),
+			 [survival_map:get_char(hills), survival_map:get_mp(hills), survival_map:get_char(marsh), survival_map:get_mp(marsh)]),
 	io:format("   / \\               ~c = Clear  (~b MP)   ~c = Station   (~b MP)~n",
-			 [map:get_char(clear), map:get_mp(clear), map:get_char(station), map:get_mp(station)]),
+			 [survival_map:get_char(clear), survival_map:get_mp(clear), survival_map:get_char(station), survival_map:get_mp(station)]),
 	io:format("  5   4              P = Player~n"),
 	ok.
 

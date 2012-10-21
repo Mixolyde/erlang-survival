@@ -1,7 +1,7 @@
 %% Author: bwilliams
 %% Created: Oct 17, 2012
 %% Description: TODO: Add description to weapons
--module(weapons).
+-module(survival_weapons).
 
 %%
 %% Include files

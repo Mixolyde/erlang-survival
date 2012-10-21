@@ -167,10 +167,10 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 %%% Internal functions
 %% --------------------------------------------------------------------
 initial_state_params(PlayerName) ->
-  Map = map:default_map(),                           % list of lists of terrain atoms
+  Map = survival_map:default_map(),                           % list of lists of terrain atoms
   % random start location from possible starts
   Start = lists:nth(random:uniform(length(?STARTS)), ?STARTS),  
-  Player = player:new_player(PlayerName, Start),      % new player record
+  Player = survival_player:new_player(PlayerName, Start),      % new player record
   [Player, Map].
 
 % Send players a notice. This could be messages to their clients
@@ -189,10 +189,10 @@ printable_state(StateData) ->
 
 % internal call for displaying the map, in case of future changes
 display_map(#state{map = Map, player = Player}) -> 
-	map:print_map_and_player(Map, Player).
+	survival_map:print_map_and_player(Map, Player).
 
 display_legend(_StateData) ->
-	map:print_legend(),
+	survival_map:print_legend(),
 	ok.
 
 display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Weapons, ws=Wounds}}) ->
@@ -230,12 +230,12 @@ display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Wea
 	send_display_status(FSM),
 	test_end(FSM).
 
-  display_status_test() ->
-	Player = player:new_player(),
-	Map = map:default_map(),
-    State = #state{map=Map, player=Player, combat={}, 
-						day=1, time=am, scenario=basic, options=[]},
+display_status_test() ->
+Player = survival_player:new_player(),
+Map = survival_map:default_map(),
+State = #state{map=Map, player=Player, combat={},
+	day=1, time=am, scenario=basic, options=[]},
 
-	ok = display_status(State).
+ok = display_status(State).
 
 -endif.

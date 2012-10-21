@@ -1,12 +1,12 @@
 {application, survival,
  [
   {description, "An application for playing an 8-bit Atari game called Survival"},
-  {vsn, "1"},
+  {vsn, "v0.1.0"},
   {registered, []},
   {applications, [
                   kernel,
                   stdlib
                  ]},
-  {mod, { survival_app, []}},
+  {mod, { survival_app, [survival_fsm]}},
   {env, []}
  ]}.
