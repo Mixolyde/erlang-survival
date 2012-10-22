@@ -120,7 +120,7 @@ default_map() -> #smap{size={20,18}, stationloc={10, 18},
 		  dup(8, empty),          % 16
       dup(8, empty) ++ [forest, forest, river, forest] ++
 		  dup(8, empty), % 17
-      dup(8, empty) ++ [forest, station, river] ++ dup(8, empty)       % last row
+      dup(8, empty) ++ [forest, station, river] ++ dup(8, empty)       % last row 18
     ]}.
 
 dup(Count, Terrain) -> lists:duplicate(Count, Terrain).

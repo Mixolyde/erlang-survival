@@ -103,14 +103,23 @@ choose_direction({direction, Direction}, _From,
     % if good, apply move
     io:format("Applying ~b direction to player location~n", [Direction]),
 	{valid, AppliedPlayer} = survival_map:apply_move(Map, Player, Direction),
-    % TODO update state day, time and player MP after move
-    % TODO roll for combat
-    UpdatedState = StateData#state{player = AppliedPlayer},
-    % TODO else return invalid_move and display
-	display_map(UpdatedState),
-	display_status(UpdatedState),
-    Reply = ok,
-    {reply, Reply, choose_direction, UpdatedState};
+	% test for win condition (no combat role on station)
+	if 
+		AppliedPlayer#player.loc == Map#smap.stationloc ->
+			io:format("Congratulations! You have reached the station!~nFinal Status:~n"),
+			display_status(StateData#state{player=AppliedPlayer}),
+			{stop, normal, won_game, StateData#state{player=AppliedPlayer}};
+		true ->
+			%else, continue with the turn
+		    % TODO update state day, time and player MP after move
+		    % TODO roll for combat
+		    UpdatedState = StateData#state{player = AppliedPlayer},
+		    % TODO else return invalid_move and display
+			display_map(UpdatedState),
+			display_status(UpdatedState),
+		    Reply = ok,
+		    {reply, Reply, choose_direction, UpdatedState}
+	end;
 choose_direction({display_status}, _From, StateData) ->
 	ok = display_status(StateData),
     Reply = ok,
@@ -256,4 +265,16 @@ display_status_test() ->
 
     ok = display_status(State).
 
+win_condition_test() ->
+    Player = survival_player:new_player(),
+    PlayerNextToStation = Player#player{loc={9, 18}},
+    Map = survival_map:default_map(),
+    State = #state{map=Map, player=PlayerNextToStation, combat={},
+	day=1, time=am, scenario=basic, options=[]},
+    Result = choose_direction({direction, 3}, self(), 
+				 State),
+    {stop, normal, won_game, StateData} = Result,
+    ?assertEqual(StateData#state.player, PlayerNextToStation#player{loc=Map#smap.stationloc}),
+    ok.
+  
 -endif.

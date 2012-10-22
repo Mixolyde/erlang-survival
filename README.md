@@ -19,10 +19,11 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Legend display for direction choice map characters
  * Status display for player and game info
  * Simple interface client for playing from the shell
+ * Win condition check after move
+ * Unchecked movement
  
 ## TODO
- * Movement
- * Win condition test
+ * Movement Error checking
  * Wait, done choosing events
  * FSM states
  * FSM transitions
