@@ -2,6 +2,7 @@
 *.app
 *.eunit
 *.test
+*.plt
 ebin
 doc
 erl_crash.dump

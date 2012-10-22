@@ -75,6 +75,9 @@ init([Player, Map]) ->
 	FirstState = #state{map=Map, player=Player, combat={}, 
 						day=1, time=am, scenario=basic, options=[]},
 	notice(FirstState, "Initial FSM State created: ~p~n", [printable_state(FirstState)]),
+	display_map(FirstState),
+	display_status(FirstState),
+	display_legend(FirstState),
     {ok, choose_direction, FirstState}.
 
 %% --------------------------------------------------------------------
@@ -95,6 +98,19 @@ choose_direction(_Event, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+choose_direction({direction, Direction}, _From, 
+				 StateData = #state{map=Map, player=Player}) ->
+    % if good, apply move
+    io:format("Applying ~b direction to player location~n", [Direction]),
+	{valid, AppliedPlayer} = survival_map:apply_move(Map, Player, Direction),
+    % TODO update state day, time and player MP after move
+    % TODO roll for combat
+    UpdatedState = StateData#state{player = AppliedPlayer},
+    % TODO else return invalid_move and display
+	display_map(UpdatedState),
+	display_status(UpdatedState),
+    Reply = ok,
+    {reply, Reply, choose_direction, UpdatedState};
 choose_direction({display_status}, _From, StateData) ->
 	ok = display_status(StateData),
     Reply = ok,
@@ -195,9 +211,10 @@ display_legend(_StateData) ->
 	survival_map:print_legend(),
 	ok.
 
-display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Weapons, ws=Wounds}}) ->
-	io:format("Player: ~s~nDay-~b Time:~s WS:~b~n", 
-			  [Name, Day, string:to_upper(atom_to_list(Time)), Wounds]),
+display_status(#state{day=Day, time=Time, 
+					  player=#player{pname=Name, weapons=Weapons, ws=Wounds, mp=MP}}) ->
+	io:format("Player: ~s~nDay-~b Time:~s MP:~b WS:~b~n", 
+			  [Name, Day, string:to_upper(atom_to_list(Time)), MP, Wounds]),
 	io:format("Weapons:~n"),
 	Outputs = [ok == io:format("~s Rounds:~s~n", 
 			   [Weap#weapon.displayname, 

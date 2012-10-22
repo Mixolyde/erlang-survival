@@ -13,7 +13,8 @@
 
 -compile([debug_info]).
 
--export([default_map/0, print_map_and_player/2, print_legend/0, get_mp/1, get_char/1, get_terrain_at_loc/2]).
+-export([default_map/0, print_map_and_player/2, print_legend/0, get_mp/1, get_char/1, 
+         get_terrain_at_loc/2, apply_move/3]).
 
 -include("survival.hrl").
 -ifdef(TEST).
@@ -28,6 +29,8 @@ get_mp(Terrain) when is_atom(Terrain) ->
 	{Terrain, MP, _Char} = lists:keyfind(Terrain, 1, ?TERRAIN_TYPES),
 	MP.
 
+get_char(player) -> 
+	$@;
 get_char(Terrain) when is_atom(Terrain) -> 
 	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TERRAIN_TYPES),
 	Char.
@@ -35,17 +38,50 @@ get_char(Terrain) when is_atom(Terrain) ->
 get_terrain_at_loc({X, Y}, #smap{terrain=Terrain}) ->
 	lists:nth(X, lists:nth(Y, Terrain)).
 
+apply_move(#smap{terrain = _Terrain, size={_XSize, _YSize}}, 
+    Player = #player{loc={XPlayer, YPlayer}, mp=_MP}, Direction) ->
+    AppliedMove = apply_direction_math({XPlayer, YPlayer}, Direction),
+    % TODO test move for validity
+
+    % TODO return updated player with new loc and MP
+    {valid, Player#player{loc=AppliedMove}}.
+
+%% take an {X, Y} location on the map and return the new location
+%% after direction (1-6), does not check for validity of new loc
+%% requires some hexagon math because of the staggered rows
+apply_direction_math({X, Y}, 1) when Y rem 2 == 1 ->
+  {X - 1, Y - 1};
+apply_direction_math({X, Y}, 1) when Y rem 2 == 0 ->
+  {X, Y - 1};
+apply_direction_math({X, Y}, 2) when Y rem 2 == 1 ->
+  {X, Y - 1};
+apply_direction_math({X, Y}, 2) when Y rem 2 == 0 ->
+  {X + 1, Y - 1};
+apply_direction_math({X, Y}, 3) ->
+  {X + 1, Y};
+apply_direction_math({X, Y}, 4) when Y rem 2 == 1 ->
+  {X, Y + 1};
+apply_direction_math({X, Y}, 4) when Y rem 2 == 0 ->
+  {X + 1, Y + 1};
+apply_direction_math({X, Y}, 5) when Y rem 2 == 1 ->
+  {X - 1, Y + 1};
+apply_direction_math({X, Y}, 5) when Y rem 2 == 0 ->
+  {X, Y + 1};
+apply_direction_math({X, Y}, 6) ->
+  {X - 1, Y}.
+
+
 print_legend() ->
 	io:format("Directions:          Terrain:~n"),
 	io:format("  1   2              ~c = Forest (~b MP)   ~c = Water     (~b MP)~n",
 			 [survival_map:get_char(forest), survival_map:get_mp(forest), survival_map:get_char(river), survival_map:get_mp(river)]),
 	io:format("   \\ /               ~c = Rough  (~b MP)   ~c = Mountains (~b MP)~n",
 			 [survival_map:get_char(rough), survival_map:get_mp(rough), survival_map:get_char(mountains), survival_map:get_mp(mountains)]),
-	io:format("6 - * - 3            ~c = Hills  (~b MP)   ~c = Swamp     (~b MP)~n",
+	io:format("6 - @ - 3            ~c = Hills  (~b MP)   ~c = Swamp     (~b MP)~n",
 			 [survival_map:get_char(hills), survival_map:get_mp(hills), survival_map:get_char(marsh), survival_map:get_mp(marsh)]),
 	io:format("   / \\               ~c = Clear  (~b MP)   ~c = Station   (~b MP)~n",
 			 [survival_map:get_char(clear), survival_map:get_mp(clear), survival_map:get_char(station), survival_map:get_mp(station)]),
-	io:format("  5   4              P = Player~n"),
+	io:format("  5   4              ~c = Player~n", [survival_map:get_char(player)]),
 	ok.
 
 default_map() -> #smap{size={20,18}, stationloc={10, 18}, 
@@ -108,7 +144,8 @@ print_line_and_continue([First | Rest], Line, Loc) ->
 print_line([], _Line, _CharIndex, _Loc) ->
     io:format("~n");
 print_line([_First | Rest], Line, CharIndex, {CharIndex, Line}) ->
-    io:format("P "),
+	% display player character if the X, Y match
+    io:format("~c ", [get_char(player)]),
     print_line(Rest, Line, CharIndex + 1, {CharIndex, Line});
 print_line([First | Rest], AnyLine, AnyIndex, {CharIndex, Line}) ->
     io:format("~c ", [get_char(First)]),
@@ -180,5 +217,17 @@ get_char_test() ->
 	[?assert(get_char(Terrain) == Char) || {Terrain, _MP, Char} <- ?TERRAIN_TYPES],
 	ok.
 
+apply_direction_math_test() ->
+    ?assertEqual({3, 8}, apply_direction_math({4, 9}, 1)),
+    ?assertEqual({4, 7}, apply_direction_math({4, 8}, 1)),
+    ?assertEqual({4, 8}, apply_direction_math({4, 9}, 2)),
+    ?assertEqual({5, 7}, apply_direction_math({4, 8}, 2)),
+    ?assertEqual({5, 8}, apply_direction_math({4, 8}, 3)),
+    ?assertEqual({4, 8}, apply_direction_math({4, 7}, 4)),
+    ?assertEqual({5, 9}, apply_direction_math({4, 8}, 4)),
+    ?assertEqual({3, 8}, apply_direction_math({4, 7}, 5)),
+    ?assertEqual({4, 9}, apply_direction_math({4, 8}, 5)),
+    ?assertEqual({3, 8}, apply_direction_math({4, 8}, 6)),
+    ok.
 
 -endif.

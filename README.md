@@ -4,13 +4,13 @@
 The player is an explorer who has crashed on an alien planet, and must
 cross a dangerous landscape to reach safe haven in a research station.
 
-## Game details/inspiration
+## Game rules/details/inspiration
  * Atari PC game: http://www.atarimania.com/game-atari-400-800-xl-xe-survival_5201.html
  * Board Game http://boardgamegeek.com/boardgame/3042/survival-the-barbarian
 
 ## Completed
  * Rebar setup of application according to OTP style
- * Basic FSM for running the game
+ * Minimal FSM behavior for running the game
  * Some records and lists in the header
  * New weapon and player record creators
  * Eunit tests for current functions and start/stop of FSM
@@ -18,13 +18,14 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Text map display with Player position
  * Legend display for direction choice map characters
  * Status display for player and game info
+ * Simple interface client for playing from the shell
  
 ## TODO
  * Movement
  * Win condition test
+ * Wait, done choosing events
  * FSM states
  * FSM transitions
- * Single-player client
  * Combat mechanics
  * Multi-player server and client
  * Event handler for tracking errors
