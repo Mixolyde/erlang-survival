@@ -20,16 +20,16 @@
   -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--define(TYPES, [{forest, 2, $F}, {marsh, 3, $S}, {mountains, 4, $M}, 
-				{river, 4, $W}, {clear, 1, $C}, {hills, 3, $H}, {rough, 3, $R}, 
-                {station, 1, $*}, {empty, infinity, $\s}]).
+-define(TERRAIN_TYPES, [{forest, 2, $F}, {marsh, 3, $S}, {mountains, 4, $M},
+				        {river, 4, $W}, {clear, 1, $C}, {hills, 3, $H}, {rough, 3, $R},
+                        {station, 1, $*}, {empty, infinity, $\s}]).
 
 get_mp(Terrain) when is_atom(Terrain) -> 
-	{Terrain, MP, _Char} = lists:keyfind(Terrain, 1, ?TYPES),
+	{Terrain, MP, _Char} = lists:keyfind(Terrain, 1, ?TERRAIN_TYPES),
 	MP.
 
 get_char(Terrain) when is_atom(Terrain) -> 
-	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TYPES),
+	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TERRAIN_TYPES),
 	Char.
 
 get_terrain_at_loc({X, Y}, #smap{terrain=Terrain}) ->
@@ -173,11 +173,11 @@ dup_test() ->
 	ok.
 
 get_mp_test() ->
-	[?assert(get_mp(Terrain) == MP) || {Terrain, MP, _Char} <- ?TYPES],
+	[?assert(get_mp(Terrain) == MP) || {Terrain, MP, _Char} <- ?TERRAIN_TYPES],
 	ok.
 
 get_char_test() ->
-	[?assert(get_char(Terrain) == Char) || {Terrain, _MP, Char} <- ?TYPES],
+	[?assert(get_char(Terrain) == Char) || {Terrain, _MP, Char} <- ?TERRAIN_TYPES],
 	ok.
 
 

@@ -96,7 +96,7 @@ choose_direction(_Event, StateData) ->
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
 choose_direction({display_status}, _From, StateData) ->
-	display_status(StateData),
+	ok = display_status(StateData),
     Reply = ok,
     {reply, Reply, choose_direction, StateData};
 choose_direction({display_legend}, _From, StateData) ->
@@ -199,23 +199,24 @@ display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Wea
 	io:format("Player: ~s~nDay-~b Time:~s WS:~b~n", 
 			  [Name, Day, string:to_upper(atom_to_list(Time)), Wounds]),
 	io:format("Weapons:~n"),
-	[io:format("~s Rounds:~s~n", 
+	Outputs = [ok == io:format("~s Rounds:~s~n", 
 			   [Weap#weapon.displayname, 
 				Weap#weapon.rounds]) || {_Ref, Weap} <- Weapons],
+	true = lists:all(fun(Elem) -> Elem end, Outputs),
 	ok.
 
 %% --------------------------------------------------------------------
 %% eunit tests
 %% --------------------------------------------------------------------
 -ifdef(TEST).
-  test_start() ->
+test_start() ->
 	{ok, Game} = survival_fsm:start("Survival FSM"),
 	Game.
 
-  test_end(Game) ->
+test_end(Game) ->
 	ok = survival_fsm:quit(Game).
 
-  start_end_test() ->
+start_end_test() ->
 	{ok, FSM} = survival_fsm:start("Survival FSM"),
 	?assert(is_pid(FSM)),
 	?assert(is_process_alive(FSM)),
@@ -223,7 +224,7 @@ display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Wea
 	ok = survival_fsm:quit(FSM),
 	?assertNot(is_process_alive(FSM)).
 
-  display_test() ->
+display_test() ->
 	FSM = test_start(),
     send_display_legend(FSM),
 	send_display_map(FSM),
@@ -231,11 +232,11 @@ display_status(#state{day=Day, time=Time, player=#player{pname=Name, weapons=Wea
 	test_end(FSM).
 
 display_status_test() ->
-Player = survival_player:new_player(),
-Map = survival_map:default_map(),
-State = #state{map=Map, player=Player, combat={},
+    Player = survival_player:new_player(),
+    Map = survival_map:default_map(),
+    State = #state{map=Map, player=Player, combat={},
 	day=1, time=am, scenario=basic, options=[]},
 
-ok = display_status(State).
+    ok = display_status(State).
 
 -endif.
