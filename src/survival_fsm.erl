@@ -169,8 +169,8 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 initial_state_params(PlayerName) ->
   Map = survival_map:default_map(),                           % list of lists of terrain atoms
   % random start location from possible starts
-  Start = lists:nth(random:uniform(length(?STARTS)), ?STARTS),  
-  Player = survival_player:new_player(PlayerName, Start),      % new player record
+  StartingLoc = lists:nth(random:uniform(length(Map#smap.starts)), Map#smap.starts),  
+  Player = survival_player:new_player(PlayerName, StartingLoc),      % new player record
   [Player, Map].
 
 % Send players a notice. This could be messages to their clients

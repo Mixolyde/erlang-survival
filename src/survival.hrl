@@ -9,13 +9,11 @@
 
 -define(ANIMAL_LIST, [maizar, corydal, ceekal, shenthe, teklek, genebrach, jalait, zeget]).
 
--define(STARTS, [{1, 3}, {4, 1}, {8, 1}, {13, 1}, {17, 1}, {19, 4}]).
-
 -record(player,  {ws = ?MAX_WOUNDS, weapons = [], 
                   pname = "TestPlayer", loc = {1,1}, maxweight = ?MAX_WEIGHT}).
 
--record(monster, {mname}).
+-record(monster, {atom, mname}).
 
 -record(weapon,  {atom, displayname, weight, melee, range, rounds, maxrounds}).
 
-
+-record(smap, {size, terrain, stationloc, starts}).

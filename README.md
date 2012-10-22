@@ -10,16 +10,18 @@ cross a dangerous landscape to reach safe haven in a research station.
 
 ## Completed
  * Rebar setup of application according to OTP style
- * Basic FSM for running the game created
+ * Basic FSM for running the game
  * Some records and lists in the header
  * New weapon and player record creators
- * Start/stop of the FSM
- * Eunit tests started for weapons and FSM
+ * Eunit tests for current functions and start/stop of FSM
  * Basic map data structure and map line length tests
+ * Text map display with Player position
+ * Legend display for direction choice map characters
+ * Status display for player and game info
  
 ## TODO
- * Text-based map display, mostly for testing/debugging
- * ANSI colors for map, legend
+ * Movement
+ * Win condition test
  * FSM states
  * FSM transitions
  * Single-player client
@@ -31,6 +33,7 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Options
  * Procedural map generation
  * cecho based client
+ * ANSI colors for map, legend
  * Web client
  * Pretty much everything
  

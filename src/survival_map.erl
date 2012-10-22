@@ -24,16 +24,16 @@
 				{river, 4, $W}, {clear, 1, $C}, {hills, 3, $H}, {rough, 3, $R}, 
                 {station, 1, $*}, {empty, infinity, $\s}]).
 
-get_mp(Terrain) -> 
+get_mp(Terrain) when is_atom(Terrain) -> 
 	{Terrain, MP, _Char} = lists:keyfind(Terrain, 1, ?TYPES),
 	MP.
 
-get_char(Terrain) -> 
+get_char(Terrain) when is_atom(Terrain) -> 
 	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TYPES),
 	Char.
 
-get_terrain_at_loc({X, Y}, Map) ->
-	lists:nth(X, lists:nth(Y, Map)).
+get_terrain_at_loc({X, Y}, #smap{terrain=Terrain}) ->
+	lists:nth(X, lists:nth(Y, Terrain)).
 
 print_legend() ->
 	io:format("Directions:          Terrain:~n"),
@@ -48,7 +48,8 @@ print_legend() ->
 	io:format("  5   4              P = Player~n"),
 	ok.
 
-default_map() ->
+default_map() -> #smap{size={20,18}, stationloc={10, 18}, 
+    starts=[{1, 3}, {4, 1}, {8, 1}, {13, 1}, {17, 1}, {19, 4}], terrain=
     [ [forest, forest, forest, forest, forest, river, forest, rough, rough, rough, mountains, hills, hills,
        forest, forest, hills, hills, forest, forest, forest], % row 1
       [forest, rough, forest, hills, rough, river, marsh, rough, hills, mountains, mountains, hills, hills,
@@ -84,12 +85,12 @@ default_map() ->
       dup(8, empty) ++ [forest, forest, river, forest] ++
 		  dup(8, empty), % 17
       dup(8, empty) ++ [forest, station, river] ++ dup(8, empty)       % last row
-    ].
+    ]}.
 
 dup(Count, Terrain) -> lists:duplicate(Count, Terrain).
 
-print_map_and_player(Map, #player{loc=Loc}) ->
-	print_map(Map, 1, Loc).
+print_map_and_player(#smap{terrain=Terrain}, #player{loc=Loc}) ->
+	print_map(Terrain, 1, Loc).
 
 print_map([], _Line, _Loc) ->
     % io:format("Finished drawing."),
@@ -122,7 +123,7 @@ print_line([First | Rest], AnyLine, AnyIndex, {CharIndex, Line}) ->
 -define(SMALL_MAP, [[forest, rough, mountains], [hills, river, marsh], [empty, station, clear]]).
 
 get_loc_test() ->
-	Map = ?SMALL_MAP,
+	Map = #smap{terrain= ?SMALL_MAP},
 	?assertEqual(forest,    get_terrain_at_loc({1, 1}, Map)),
 	?assertEqual(rough,     get_terrain_at_loc({2, 1}, Map)),
 	?assertEqual(mountains, get_terrain_at_loc({3, 1}, Map)),
@@ -156,7 +157,7 @@ print_map_last_line_test() ->
 
 map_line_length_test() ->
 	Map = default_map(),
-	LinesWithIndex = lists:zip(lists:seq(1, length(Map)), Map),
+	LinesWithIndex = lists:zip(lists:seq(1, length(Map#smap.terrain)), Map#smap.terrain),
 
 	[?assertEqual({Index, 20}, {Index, length(Line)}) 
 	 || {Index, Line} <- LinesWithIndex, Index rem 2 == 1 ],
