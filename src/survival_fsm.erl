@@ -98,6 +98,10 @@ choose_direction(_Event, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+choose_direction({direction, Direction}, _From, StateData) 
+    when Direction < 1; Direction > 6 ->
+	% bad direction input
+	{reply, {error, invalid_direction}, choose_direction, StateData};
 choose_direction({direction, Direction}, _From, 
 				 StateData = #state{map=Map, player=Player}) ->
     % if good, apply move
@@ -194,9 +198,13 @@ code_change(_OldVsn, StateName, StateData, _Extra) ->
 initial_state_params(PlayerName) ->
   Map = survival_map:default_map(),                           % list of lists of terrain atoms
   % random start location from possible starts
-  StartingLoc = lists:nth(random:uniform(length(Map#smap.starts)), Map#smap.starts),  
-  Player = survival_player:new_player(PlayerName, StartingLoc),      % new player record
-  [Player, Map].
+  StartingLoc = lists:nth(random:uniform(length(Map#smap.starts)), Map#smap.starts),
+  % new player record
+  Player = survival_player:new_player(PlayerName, StartingLoc),
+  % TODO replace with player weapon choices
+  LoadedPlayer = survival_player:add_weapons(Player, survival_weapons:default_list()),
+  
+  [LoadedPlayer, Map].
 
 % Send players a notice. This could be messages to their clients
 % but for our purposes, outputting to the shell is enough.
@@ -225,10 +233,11 @@ display_status(#state{day=Day, time=Time,
 	io:format("Player: ~s~nDay-~b Time:~s MP:~b WS:~b~n", 
 			  [Name, Day, string:to_upper(atom_to_list(Time)), MP, Wounds]),
 	io:format("Weapons:~n"),
-	Outputs = [ok == io:format("~s Rounds:~s~n", 
+	Outputs = [ok == io:format("~-15s Rounds:~p~n", 
 			   [Weap#weapon.displayname, 
 				Weap#weapon.rounds]) || {_Ref, Weap} <- Weapons],
 	true = lists:all(fun(Elem) -> Elem end, Outputs),
+	io:format("~n"),
 	ok.
 
 %% --------------------------------------------------------------------
@@ -260,10 +269,20 @@ display_test() ->
 display_status_test() ->
     Player = survival_player:new_player(),
     Map = survival_map:default_map(),
-    State = #state{map=Map, player=Player, combat={},
-	day=1, time=am, scenario=basic, options=[]},
+    State = #state{map=Map, player=Player, 
+	  day=1, time=am, scenario=basic, options=[]},
 
     ok = display_status(State).
+
+invalid_direction_test() ->
+    Player = survival_player:new_player(),
+    Map = survival_map:default_map(),
+    State = #state{map=Map, player=Player},
+
+    ?assertEqual({reply, {error, invalid_direction}, choose_direction, State},
+      choose_direction({direction, 0}, self(), State)),
+    ?assertEqual({reply, {error, invalid_direction}, choose_direction, State},
+      choose_direction({direction, 7}, self(), State)).
 
 win_condition_test() ->
     Player = survival_player:new_player(),

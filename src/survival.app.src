@@ -7,6 +7,7 @@
                   kernel,
                   stdlib
                  ]},
-  {mod, { survival_app, [survival_fsm]}},
+  {mod, { survival_app, []}},
+  {modules, [survival_fsmp, survival_map, survival_player, survival_weapons]},
   {env, []}
  ]}.

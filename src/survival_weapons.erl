@@ -14,7 +14,7 @@
 %%
 %% Exported Functions
 %%
--export([new_weapon/1, all_weapons/0, purchase_list/0]).
+-export([new_weapon/1, get_weight/1, all_weapons/0, purchase_list/0, default_list/0]).
 
 %%
 %% API Functions
@@ -39,10 +39,15 @@ new_weapon(hands) ->
 new_weapon(_Any) ->
 	error({unknown_weapon_type, _Any}).
 
+get_weight(Weapon) ->
+	WeaponRecord = new_weapon(Weapon),
+	WeaponRecord#weapon.weight.
+
 %[hands, spear, laser_carbine, auto_pistol, 
 %lightsword, rifle, grenade_launcher, energy_blaster]
 all_weapons() -> ?WEAPON_LIST.
 purchase_list() -> all_weapons() -- [hands].
+default_list() -> [spear, lightsword, auto_pistol, rifle].
 
 %%
 %% Local Functions
@@ -64,4 +69,8 @@ new_weapons_test() ->
 	Records = [new_weapon(Weapon) || Weapon <- ?WEAPON_LIST],
 	?assertEqual(length(all_weapons()), length(Records)),
     ok.
+
+bad_weapon_test() ->
+	?assertError({unknown_weapon_type, _Any}, new_weapon(junk)).
+
 -endif.

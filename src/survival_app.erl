@@ -24,6 +24,8 @@ stop(_State) ->
 
 simple_test() ->
     ok = application:start(survival),
-    ?assertNot(undefined == whereis(survival_sup)).
+    ?assertNot(undefined == whereis(survival_sup)),
 
+	ok = application:stop(survival),
+	?assert(undefined == whereis(survival_sup)).
 -endif.
