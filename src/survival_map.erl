@@ -35,16 +35,32 @@ get_char(Terrain) when is_atom(Terrain) ->
 	{Terrain, _MP, Char} = lists:keyfind(Terrain, 1, ?TERRAIN_TYPES),
 	Char.
 
-get_terrain_at_loc({X, Y}, #smap{terrain=Terrain}) ->
+get_terrain_at_loc({X, Y}, _Map = #smap{terrain=Terrain}) ->
 	lists:nth(X, lists:nth(Y, Terrain)).
 
-apply_move(#smap{terrain = _Terrain, size={_XSize, _YSize}}, 
-    Player = #player{loc={XPlayer, YPlayer}, mp=_MP}, Direction) ->
-    AppliedMove = apply_direction_math({XPlayer, YPlayer}, Direction),
-    % TODO test move for validity
-
-    % TODO return updated player with new loc and MP
-    {valid, Player#player{loc=AppliedMove}}.
+apply_move(Map = #smap{size={XSize, YSize}}, 
+    Player = #player{loc={XPlayer, YPlayer}}, Direction) ->
+    {AppliedX, AppliedY} = apply_direction_math({XPlayer, YPlayer}, Direction),
+    if
+		AppliedX < 1 orelse AppliedX > XSize orelse AppliedY < 1 orelse AppliedY > YSize ->
+			{invalid_move, map_bounds_exceeded};
+		true ->
+			TerrainAtLoc = get_terrain_at_loc({AppliedX, AppliedY}, Map),
+			case TerrainAtLoc of
+				empty ->
+					{invalid_move, location_is_empty};
+				_Else ->
+					%location is good, check for enough movement points
+					MPofMove = get_mp(TerrainAtLoc),
+					if
+						Player#player.mp - MPofMove < 0 ->
+							{invalid_move, max_mp_exceeded};
+						true ->
+						  PlayerMP = Player#player.mp,
+						  {valid, Player#player{loc={AppliedX, AppliedY}, mp=PlayerMP - MPofMove}}
+					end
+			end
+	end.
 
 %% take an {X, Y} location on the map and return the new location
 %% after direction (1-6), does not check for validity of new loc
@@ -84,44 +100,49 @@ print_legend() ->
 	io:format("  5   4              ~c = Player~n", [survival_map:get_char(player)]),
 	ok.
 
-default_map() -> #smap{size={20,18}, stationloc={10, 18}, 
+default_map() -> 
+	Map = #smap{size={20,18}, stationloc={11, 18}, 
     starts=[{1, 3}, {4, 1}, {8, 1}, {13, 1}, {17, 1}, {19, 4}], terrain=
     [ [forest, forest, forest, forest, forest, river, forest, rough, rough, rough, mountains, hills, hills,
        forest, forest, hills, hills, forest, forest, forest], % row 1
       [forest, rough, forest, hills, rough, river, marsh, rough, hills, mountains, mountains, hills, hills,
-	   hills, hills, hills, forest, hills, forest], % row 2
+	   hills, hills, hills, forest, hills, forest, empty], % row 2
 	  [rough, rough, hills, hills, rough, river, rough, mountains, mountains, hills, mountains, mountains, hills,
 	   mountains, mountains, rough, hills, hills, forest, forest], % row 3
 	  [rough, rough, hills, mountains, rough, river, forest, mountains, mountains, mountains, mountains, mountains, mountains, mountains,
-	   rough, rough, mountains, hills, hills], % row 4
+	   rough, rough, mountains, hills, hills, empty], % row 4
       [rough, rough, mountains, mountains, mountains, hills, river, river] ++
 		  dup(6, mountains) ++ [rough, rough, mountains, rough, river, river], % row 5
       [rough, hills] ++ dup(3, mountains) ++ [river, marsh] ++ dup(4, river) ++
-		  dup(5, mountains) ++ [marsh, river, marsh], % row 6
+		  dup(5, mountains) ++ [marsh, river, marsh, empty], % row 6
       [forest] ++ dup(4, hills) ++ [river, forest, clear, rough, forest, forest, river, clear] ++
 		  dup(4, mountains) ++ [marsh, river, forest], % row 7
       [hills, hills, forest, hills, river, forest, hills, hills, forest, rough, clear, river,
-	   rough, rough, mountains, mountains, forest, river, forest], % row 8
+	   rough, rough, mountains, mountains, forest, river, forest, empty], % row 8
 	  [clear] ++ dup(4, river) ++ [marsh, rough] ++ dup(3, hills) ++ [mountains, forest, river, mountains, mountains] ++
 		  dup(3, forest) ++ [river, forest], % row 9
       [river] ++ dup(3, forest) ++ [river, marsh, rough] ++ dup(4, mountains) ++ [clear] ++ dup(6, river) ++
-		  [rough], % row 10
+		  [rough, empty], % row 10
       [forest, forest, mountains, mountains, river, forest] ++ dup(5, mountains) ++ 
 		  [rough, river, marsh, forest, marsh, marsh, rough, rough, rough], % row 11
       dup(4, empty) ++ [rough] ++ dup(3, mountains) ++ dup(3, hills) ++ [river, forest, forest] ++
-		  dup(5, empty),  % row 12 length 19
+		  dup(6, empty),  % row 12
 	  dup(5, empty) ++ [rough, rough, hills, hills, rough, hills, river, hills] ++
 		  dup(7, empty),  % row 13
 	  dup(4, empty) ++ [rough] ++  dup(3, mountains) ++ [rough, forest, river, marsh, hills] ++
-		  dup(6, empty), % row 14
+		  dup(7, empty), % row 14
 	  dup(5, empty) ++ [rough, rough, mountains, rough, forest, river, forest, marsh] ++
 		  dup(7, empty), % row 15
 	  dup(8, empty) ++ [marsh, river, forest] ++
-		  dup(8, empty),          % 16
+		  dup(9, empty),          % 16
       dup(8, empty) ++ [forest, forest, river, forest] ++
 		  dup(8, empty), % 17
-      dup(8, empty) ++ [forest, station, river] ++ dup(8, empty)       % last row 18
-    ]}.
+      dup(9, empty) ++ [forest, station, river] ++ dup(8, empty)       % last row 18
+    ]},
+	station = get_terrain_at_loc(Map#smap.stationloc, Map),
+	MapSize = Map#smap.size,
+	MapSize = {length(lists:nth(1, Map#smap.terrain)), length(Map#smap.terrain)},
+	Map.
 
 dup(Count, Terrain) -> lists:duplicate(Count, Terrain).
 
@@ -157,19 +178,32 @@ print_line([First | Rest], AnyLine, AnyIndex, {CharIndex, Line}) ->
 %% --------------------------------------------------------------------
 -ifdef(TEST).
 
--define(SMALL_MAP, [[forest, rough, mountains], [hills, river, marsh], [empty, station, clear]]).
+-define(SMALL_MAP, #smap{terrain=[[forest, rough, mountains], [hills, river, marsh], 
+								  [empty, station, clear]],
+						 size={3,3}}).
+
+apply_move_validy_test() ->
+	Player = survival_player:new_player("Survival Map Test", {1, 1}),
+	{invalid_move, map_bounds_exceeded} = apply_move(?SMALL_MAP, Player, 1),
+	{invalid_move, map_bounds_exceeded} = apply_move(?SMALL_MAP, Player, 2),
+	{invalid_move, map_bounds_exceeded} = apply_move(?SMALL_MAP, Player, 5),
+	{invalid_move, map_bounds_exceeded} = apply_move(?SMALL_MAP, Player, 6),
+	Player2 = survival_player:new_player("Survival Map Test", {1, 2}),
+	{invalid_move, location_is_empty} = apply_move(?SMALL_MAP, Player2, 5),
+	LowMPPlayer = Player#player{mp=1},
+	{invalid_move, max_mp_exceeded} = apply_move(?SMALL_MAP, LowMPPlayer, 3),
+	ok.
 
 get_loc_test() ->
-	Map = #smap{terrain= ?SMALL_MAP},
-	?assertEqual(forest,    get_terrain_at_loc({1, 1}, Map)),
-	?assertEqual(rough,     get_terrain_at_loc({2, 1}, Map)),
-	?assertEqual(mountains, get_terrain_at_loc({3, 1}, Map)),
-	?assertEqual(hills,     get_terrain_at_loc({1, 2}, Map)),
-	?assertEqual(river,     get_terrain_at_loc({2, 2}, Map)),
-	?assertEqual(marsh,     get_terrain_at_loc({3, 2}, Map)),
-	?assertEqual(empty,     get_terrain_at_loc({1, 3}, Map)),
-	?assertEqual(station,   get_terrain_at_loc({2, 3}, Map)),
-	?assertEqual(clear,     get_terrain_at_loc({3, 3}, Map)),
+	?assertEqual(forest,    get_terrain_at_loc({1, 1}, ?SMALL_MAP)),
+	?assertEqual(rough,     get_terrain_at_loc({2, 1}, ?SMALL_MAP)),
+	?assertEqual(mountains, get_terrain_at_loc({3, 1}, ?SMALL_MAP)),
+	?assertEqual(hills,     get_terrain_at_loc({1, 2}, ?SMALL_MAP)),
+	?assertEqual(river,     get_terrain_at_loc({2, 2}, ?SMALL_MAP)),
+	?assertEqual(marsh,     get_terrain_at_loc({3, 2}, ?SMALL_MAP)),
+	?assertEqual(empty,     get_terrain_at_loc({1, 3}, ?SMALL_MAP)),
+	?assertEqual(station,   get_terrain_at_loc({2, 3}, ?SMALL_MAP)),
+	?assertEqual(clear,     get_terrain_at_loc({3, 3}, ?SMALL_MAP)),
 	
 	ok.
 
@@ -193,13 +227,10 @@ print_map_last_line_test() ->
   ok.
 
 map_line_length_test() ->
-	Map = default_map(),
-	LinesWithIndex = lists:zip(lists:seq(1, length(Map#smap.terrain)), Map#smap.terrain),
-
+	Map = default_map(), 
+	ZippedMap = lists:zip(lists:seq(1, length(Map#smap.terrain)), Map#smap.terrain),
 	[?assertEqual({Index, 20}, {Index, length(Line)}) 
-	 || {Index, Line} <- LinesWithIndex, Index rem 2 == 1 ],
-    [?assertEqual({Index, 19}, {Index, length(Line)}) 
-	 || {Index, Line} <- LinesWithIndex, Index rem 2 == 0 ].
+	 || {Index, Line} <- ZippedMap].
 	
 dup_test() ->
 	[] = dup(0, stuff),

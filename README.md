@@ -5,7 +5,7 @@ The player is an explorer who has crashed on an alien planet, and must
 cross a dangerous landscape to reach safe haven in a research station.
 
 ## Game rules/details/inspiration
- * Atari PC game: http://www.atarimania.com/game-atari-400-800-xl-xe-survival_5201.html
+ * Atari PC game and manual scan: http://www.atarimania.com/game-atari-400-800-xl-xe-survival_5201.html
  * Board Game http://boardgamegeek.com/boardgame/3042/survival-the-barbarian
 
 ## Completed

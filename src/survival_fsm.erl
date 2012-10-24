@@ -51,15 +51,15 @@ send_weapon_choice(FSM, Weapon) when is_integer(Weapon) ->
 
 send_display_map(FSM) ->
 	io:format("Sending map request to FSM~n"),
-    gen_fsm:sync_send_event(FSM, {display_map}).
+    gen_fsm:sync_send_all_state_event(FSM, {display_map}).
 
 send_display_status(FSM) ->
 	io:format("Sending status request to FSM~n"),
-    gen_fsm:sync_send_event(FSM, {display_status}).
+    gen_fsm:sync_send_all_state_event(FSM, {display_status}).
 
 send_display_legend(FSM) ->
 	io:format("Sending legend request to FSM~n"),
-    gen_fsm:sync_send_event(FSM, {display_legend}).
+    gen_fsm:sync_send_all_state_event(FSM, {display_legend}).
 
 %% ====================================================================
 %% Server functions
@@ -103,39 +103,33 @@ choose_direction({direction, Direction}, _From, StateData)
 	% bad direction input
 	{reply, {error, invalid_direction}, choose_direction, StateData};
 choose_direction({direction, Direction}, _From, 
-				 StateData = #state{map=Map, player=Player}) ->
-    % if good, apply move
+				 StateData = #state{map=Map = #smap{stationloc = Stationloc}, player=Player}) ->
     io:format("Applying ~b direction to player location~n", [Direction]),
-	{valid, AppliedPlayer} = survival_map:apply_move(Map, Player, Direction),
-	% test for win condition (no combat role on station)
-	if 
-		AppliedPlayer#player.loc == Map#smap.stationloc ->
-			io:format("Congratulations! You have reached the station!~nFinal Status:~n"),
-			display_status(StateData#state{player=AppliedPlayer}),
-			{stop, normal, won_game, StateData#state{player=AppliedPlayer}};
-		true ->
-			%else, continue with the turn
-		    % TODO update state day, time and player MP after move
-		    % TODO roll for combat
-		    UpdatedState = StateData#state{player = AppliedPlayer},
-		    % TODO else return invalid_move and display
-			display_map(UpdatedState),
-			display_status(UpdatedState),
-		    Reply = ok,
-		    {reply, Reply, choose_direction, UpdatedState}
-	end;
-choose_direction({display_status}, _From, StateData) ->
-	ok = display_status(StateData),
-    Reply = ok,
-    {reply, Reply, choose_direction, StateData};
-choose_direction({display_legend}, _From, StateData) ->
-	display_legend(StateData),
-    Reply = ok,
-    {reply, Reply, choose_direction, StateData};
-choose_direction({display_map}, _From, StateData) ->
-	display_map(StateData),
-    Reply = ok,
-    {reply, Reply, choose_direction, StateData}.
+	% apply the direction and handle result
+	MoveResult = survival_map:apply_move(Map, Player, Direction),
+	case MoveResult of
+		{invalid_move, Reason} ->
+			io:format("Move invalid because: ~p~n", [Reason]),
+			display_map(StateData),
+			display_status(StateData),
+			{reply, {invalid_move, Reason}, choose_direction, StateData};
+		   {valid, AppliedPlayer = #player{loc = Stationloc}} % test for win condition
+			                                                     ->
+			   % Player's new location is the station, he wins!
+			   io:format("Congratulations! You have reached the station!~nFinal Status:~n"),
+			   display_status(StateData#state{player=AppliedPlayer}),
+		    {stop, normal, won_game, StateData#state{player=AppliedPlayer}};
+				 {valid, AppliedPlayer} ->
+			       %else, continue with the turn
+			       % TODO update state day, time and player MP after move
+			       % TODO roll for combat
+			       UpdatedStateData = StateData#state{player = AppliedPlayer},
+				      % TODO else return invalid_move and display
+				      display_map(UpdatedStateData),
+			       display_status(UpdatedStateData),
+			       Reply = ok,
+	         {reply, Reply, choose_direction, UpdatedStateData}
+    end.
 
 %% --------------------------------------------------------------------
 %% Func: handle_event/3
@@ -156,6 +150,18 @@ handle_event(Event, StateName, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+handle_sync_event({display_status}, _From, StateName, StateData) ->
+	ok = display_status(StateData),
+    Reply = ok,
+    {reply, Reply, StateName, StateData};
+handle_sync_event({display_legend}, _From, StateName, StateData) ->
+	display_legend(StateData),
+    Reply = ok,
+    {reply, Reply, StateName, StateData};
+handle_sync_event({display_map}, _From, StateName, StateData) ->
+	display_map(StateData),
+    Reply = ok,
+    {reply, Reply, StateName, StateData};
 handle_sync_event({quit}, _From, StateName, StateData) ->
     notice(StateData, "received quit event while in state ~w~n", [StateName]),
     {stop, normal, ok, printable_state(StateData)};
@@ -286,14 +292,21 @@ invalid_direction_test() ->
 
 win_condition_test() ->
     Player = survival_player:new_player(),
-    PlayerNextToStation = Player#player{loc={9, 18}},
+    PlayerNextToStation = Player#player{loc={10, 18}},
     Map = survival_map:default_map(),
     State = #state{map=Map, player=PlayerNextToStation, combat={},
 	day=1, time=am, scenario=basic, options=[]},
     Result = choose_direction({direction, 3}, self(), 
 				 State),
     {stop, normal, won_game, StateData} = Result,
-    ?assertEqual(StateData#state.player, PlayerNextToStation#player{loc=Map#smap.stationloc}),
+	io:format("FSM MP before call ~b, MPofStation:~b, MPAfterCall ~b Terrain ~p~n", 
+			  [PlayerNextToStation#player.mp,
+			   survival_map:get_mp(station),
+			   StateData#state.player#player.mp,
+			   survival_map:get_terrain_at_loc({11, 18}, Map)]),
+    ?assertEqual(StateData#state.player, 
+				 PlayerNextToStation#player{loc=Map#smap.stationloc, 
+											mp=PlayerNextToStation#player.mp - survival_map:get_mp(station)}),
     ok.
   
 -endif.
