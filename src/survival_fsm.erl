@@ -18,7 +18,7 @@
 %% External exports
 -export([start/1, start_link/1, quit/1]).
 -export([send_direction_choice/2, send_weapon_choice/2, send_display_legend/1, send_display_status/1,
-		 send_display_map/1]).
+		 send_display_map/1, send_done/1, get_client_state/1]).
 
 %% gen_fsm callbacks
 -export([init/1, choose_direction/2, choose_direction/3, handle_event/3,
@@ -49,6 +49,10 @@ send_weapon_choice(FSM, Weapon) when is_integer(Weapon) ->
 	io:format("Sending ~b weapon choice to FSM~n", [Weapon]),
     gen_fsm:sync_send_event(FSM, {weapon, Weapon}).
 
+send_done(FSM) ->
+	io:format("Sending done event to FSM~n"),
+    gen_fsm:sync_send_event(FSM, {done}).
+
 send_display_map(FSM) ->
 	io:format("Sending map request to FSM~n"),
     gen_fsm:sync_send_all_state_event(FSM, {display_map}).
@@ -61,6 +65,10 @@ send_display_legend(FSM) ->
 	io:format("Sending legend request to FSM~n"),
     gen_fsm:sync_send_all_state_event(FSM, {display_legend}).
 
+get_client_state(FSM) ->
+	io:format("Sending client state request to FSM~n"),
+	gen_fsm:sync_send_all_state_event(FSM, {client_state}).
+
 %% ====================================================================
 %% Server functions
 %% ====================================================================
@@ -72,8 +80,7 @@ send_display_legend(FSM) ->
 %%          {stop, StopReason}
 %% --------------------------------------------------------------------
 init([Player, Map]) ->
-	FirstState = #state{map=Map, player=Player, combat={}, 
-						day=1, time=am, scenario=basic, options=[]},
+	FirstState = basic_scenario_state(Player, Map),
 	notice(FirstState, "Initial FSM State created: ~p~n", [printable_state(FirstState)]),
 	display_map(FirstState),
 	display_status(FirstState),
@@ -98,13 +105,39 @@ choose_direction(_Event, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+choose_direction({done}, _From, StateData) ->
+	% player has finished moving for the day
+	case StateData#state.time of
+		am ->
+			% update MP, switch to PM
+			NewPlayer = StateData#state.player#player{mp=?MAX_MP},
+			NewStateData = StateData#state{player = NewPlayer, time=pm},
+			display_map(NewStateData),
+			display_status(NewStateData),
+			{reply, ok, choose_direction, NewStateData};
+		pm ->
+			% update MP, switch back to am and up the day count
+			NewPlayer = StateData#state.player#player{mp=?MAX_MP},
+			NewDay = StateData#state.day + 1,
+			NewStateData = StateData#state{player=NewPlayer, time=am, day= NewDay},
+			if 
+				NewDay > ?DAYS_OF_FOOD ->
+					io:format("~n~nYou have run out of food and died!~nFinal Status:~n~n"),
+					display_status(NewStateData),
+					{stop, normal, lost_game, NewStateData};
+				true ->
+					display_map(NewStateData),
+					display_status(NewStateData),
+					{reply, ok, choose_direction, NewStateData}
+			end
+	end;
 choose_direction({direction, Direction}, _From, StateData) 
     when Direction < 1; Direction > 6 ->
 	% bad direction input
-	{reply, {error, invalid_direction}, choose_direction, StateData};
+	{reply, {invalid_move, invalid_direction}, choose_direction, StateData};
 choose_direction({direction, Direction}, _From, 
 				 StateData = #state{map=Map = #smap{stationloc = Stationloc}, player=Player}) ->
-    io:format("Applying ~b direction to player location~n", [Direction]),
+    % io:format("Applying ~b direction to player location~n", [Direction]),
 	% apply the direction and handle result
 	MoveResult = survival_map:apply_move(Map, Player, Direction),
 	case MoveResult of
@@ -113,22 +146,19 @@ choose_direction({direction, Direction}, _From,
 			display_map(StateData),
 			display_status(StateData),
 			{reply, {invalid_move, Reason}, choose_direction, StateData};
-		   {valid, AppliedPlayer = #player{loc = Stationloc}} % test for win condition
-			                                                     ->
-			   % Player's new location is the station, he wins!
-			   io:format("Congratulations! You have reached the station!~nFinal Status:~n"),
-			   display_status(StateData#state{player=AppliedPlayer}),
-		    {stop, normal, won_game, StateData#state{player=AppliedPlayer}};
-				 {valid, AppliedPlayer} ->
-			       %else, continue with the turn
-			       % TODO update state day, time and player MP after move
-			       % TODO roll for combat
-			       UpdatedStateData = StateData#state{player = AppliedPlayer},
-				      % TODO else return invalid_move and display
-				      display_map(UpdatedStateData),
-			       display_status(UpdatedStateData),
-			       Reply = ok,
-	         {reply, Reply, choose_direction, UpdatedStateData}
+		{valid, AppliedPlayer = #player{loc = Stationloc}} ->  % test for win condition
+			% Player's new location is the station, he wins!
+			io:format("~n~nCongratulations! You have reached the station!~nFinal Status:~n~n"),
+			display_status(StateData#state{player=AppliedPlayer}),
+			{stop, normal, won_game, StateData#state{player=AppliedPlayer}};
+		{valid, AppliedPlayer} ->
+	    	%else, continue with the turn
+	    	% TODO roll for combat
+	    	UpdatedStateData = StateData#state{player = AppliedPlayer},
+			display_map(UpdatedStateData),
+	    	display_status(UpdatedStateData),
+	    	Reply = ok,
+	        {reply, Reply, choose_direction, UpdatedStateData}
     end.
 
 %% --------------------------------------------------------------------
@@ -150,6 +180,10 @@ handle_event(Event, StateName, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+handle_sync_event({client_state}, _From, StateName, StateData) ->
+	% return the client viewable state data for display/info
+    Reply = {ok, StateData},
+    {reply, Reply, StateName, StateData};
 handle_sync_event({display_status}, _From, StateName, StateData) ->
 	ok = display_status(StateData),
     Reply = ok,
@@ -211,6 +245,10 @@ initial_state_params(PlayerName) ->
   LoadedPlayer = survival_player:add_weapons(Player, survival_weapons:default_list()),
   
   [LoadedPlayer, Map].
+
+basic_scenario_state(Player, Map) ->
+	#state{player=Player, map=Map, combat={}, 
+						day=1, time=am, scenario=basic, options=[]}.
 
 % Send players a notice. This could be messages to their clients
 % but for our purposes, outputting to the shell is enough.
@@ -285,9 +323,9 @@ invalid_direction_test() ->
     Map = survival_map:default_map(),
     State = #state{map=Map, player=Player},
 
-    ?assertEqual({reply, {error, invalid_direction}, choose_direction, State},
+    ?assertEqual({reply, {invalid_move, invalid_direction}, choose_direction, State},
       choose_direction({direction, 0}, self(), State)),
-    ?assertEqual({reply, {error, invalid_direction}, choose_direction, State},
+    ?assertEqual({reply, {invalid_move, invalid_direction}, choose_direction, State},
       choose_direction({direction, 7}, self(), State)).
 
 win_condition_test() ->
@@ -308,5 +346,42 @@ win_condition_test() ->
 				 PlayerNextToStation#player{loc=Map#smap.stationloc, 
 											mp=PlayerNextToStation#player.mp - survival_map:get_mp(station)}),
     ok.
+
+client_state_test() ->
+	Game = test_start(),
+	
+	{ok, State} = get_client_state(Game),
+	?assert(is_record(State, state)),
+	
+	
+	test_end(Game).
+	
+done_moving_test() ->
+    Player = survival_player:new_player(),
+    Map = survival_map:default_map(),
+	StateData = basic_scenario_state(Player, Map),
+	NewStateData = test_regular_done(StateData, 11),
+	
+	% 12th done we should run out of food in basic game
+	{stop, normal, lost_game, _LostStateData} = 
+		choose_direction({done}, self(), NewStateData).
+
+test_regular_done(StateData, 0) ->
+	StateData;
+test_regular_done(StateData, N) ->
+	{reply, ok, choose_direction, NewStateData} = 
+		choose_direction({done}, self(), StateData),
+	case StateData#state.time of
+		am ->
+			?assertEqual(pm, NewStateData#state.time),
+			?assertEqual(StateData#state.day, NewStateData#state.day);
+		pm ->
+			?assertEqual(am, NewStateData#state.time),
+			?assertEqual(StateData#state.day + 1, NewStateData#state.day)
+	end,
+									 
+	test_regular_done(NewStateData, N - 1).
+	
+% TODO test sending {done} request to send_direction, test for days of food
   
 -endif.

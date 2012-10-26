@@ -1,7 +1,8 @@
 %% Author: bwilliams
 %% Created: Oct 20, 2012
-%% Description: TODO: Add description to simple_client
--module(simple_client).
+%% Description: Methods for sending events to the game FSM from the shell,
+%%  mostly for testing purposes.
+-module(shell_client).
 
 %%
 %% Include files
@@ -14,8 +15,8 @@
 %%
 %% Exported Functions
 %%
--export([start/1, quit/1, display_legend/1, display_status/1,
-		 display_map/1, choose_direction/2, choose_weapon/2]).
+-export([start/1, quit/1, display_legend/1, display_status/1, done/1,
+		 display_map/1, choose_direction/2, choose_weapon/2, get_state/1]).
 
 %%
 %% API Functions
@@ -37,11 +38,18 @@ display_status(FSM) ->
 display_legend(FSM) ->
     survival_fsm:send_display_legend(FSM).
 
+done(FSM) ->
+	survival_fsm:send_done(FSM).
+
 choose_direction(FSM, Direction) ->
 	survival_fsm:send_direction_choice(FSM, Direction).
 
 choose_weapon(FSM, Weapon) ->
 	survival_fsm:send_weapon_choice(FSM, Weapon).
+
+get_state(FSM) ->
+	{ok, State} = survival_fsm:get_client_state(FSM),
+	State.
 
 
 %%
@@ -52,13 +60,21 @@ choose_weapon(FSM, Weapon) ->
 %% eunit tests
 %% --------------------------------------------------------------------
 -ifdef(TEST).
-  start_quit_test() ->
+start_quit_test() ->
+	Game = shell_client:start("Simple Client"),
 	%start up the game
-	Game = simple_client:start("Simple Client"),
 	?assert(is_pid(Game)),
 	?assert(is_process_alive(Game)),
 	
 	% now shut it down
-	ok = simple_client:quit(Game),
+	ok = shell_client:quit(Game),
 	?assertNot(is_process_alive(Game)).
+
+display_test() ->
+	Game = shell_client:start("Simple Client"),
+	display_legend(Game),
+	display_map(Game),
+	display_status(Game),
+	ok = shell_client:quit(Game).
+
 -endif.

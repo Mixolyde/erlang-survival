@@ -14,20 +14,20 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Some records and lists in the header
  * New weapon and player record creators
  * Eunit tests for current functions and start/stop of FSM
- * Basic map data structure and map line length tests
+ * Basic map data structure and validity tests
  * Text map display with Player position
  * Legend display for direction choice map characters
  * Status display for player and game info
  * Simple interface client for playing from the shell
  * Win condition check after move
- * Unchecked movement
+ * Checked Movement, done moving
+ * Starvation check
+ * Turn/Day Completion
  
 ## TODO
- * Movement Error checking
- * Wait, done choosing events
- * FSM states
- * FSM transitions
  * Combat mechanics
+ * Initial weapon loadout choosing
+ * State transitions in/out of combat
  * Multi-player server and client
  * Event handler for tracking errors
  * Graphics
@@ -37,8 +37,20 @@ cross a dangerous landscape to reach safe haven in a research station.
  * cecho based client
  * ANSI colors for map, legend
  * Web client
- * Pretty much everything
+ 
+ ## Roadmap
+ 0.1.0 Current work
+ 0.2.0 Basic game completely implemented with simple client
+ 0.3.0 Advanced game options implemented
+ 0.4.0 Advanced scenarios implemented
+ 1.0.0 Multiplayer with simple client
+ 1.2.0 Random map generation
  
 ## Getting Started
  1. Get rebar, build it and replace the rebar that's in the repo
- 2. build and test: `make clean compile eunit` 
+ 2. build and test: `make clean compile eunit`
+ 3. From shell, change to ebin directory
+ 4. `Game = simple_client:start().`
+ 5. `simple_client:choose_direction(Game, 4).`
+ 6. `simple_client:quit(Game).` 
+ 

@@ -6,6 +6,8 @@
 
 -define(MAX_MP, 6).
 
+-define(DAYS_OF_FOOD, 6).
+
 -define(WEAPON_LIST, [hands, spear, laser_carbine, auto_pistol, 
 					  lightsword, rifle, grenade_launcher, energy_blaster]).
 
