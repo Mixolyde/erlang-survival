@@ -15,7 +15,8 @@
 
 -compile([debug_info]).
 
--export([new_player/0, new_player/2, add_weapon/2, add_weapons/2, remove_weapon/2, total_weight/1]).
+-export([new_player/0, new_player/2, add_weapon/2, add_weapons/2, remove_weapon/2, total_weight/1,
+		 has_ranged/1]).
 
 -include("survival.hrl").
 
@@ -57,6 +58,16 @@ remove_weapon(Player = #player{weapons = Weapons}, Ref)
 total_weight(PlayerWeapons) ->
 	lists:sum([Weight || {_Ref, #weapon{weight=Weight}} <- PlayerWeapons]).
 
+has_ranged(PlayerWeapons) ->
+	lists:any(fun({_Ref, #weapon{range=Range}}) ->
+					  if
+						  is_integer(Range) ->
+							  true;
+						  true ->
+							  false
+					  end
+			  end, PlayerWeapons).
+
 
 -ifdef(TEST).
   -include_lib("eunit/include/eunit.hrl").
@@ -97,6 +108,21 @@ total_weight_test() ->
 	LoadedPlayer = add_weapons(Player, [spear, auto_pistol, lightsword]),
     ?assertEqual(4, total_weight(LoadedPlayer#player.weapons)).
 
+has_ranged_test() ->
+	List1 = [],
+	?assertNot(has_ranged(List1)),
+	Spear = {make_ref(), survival_weapons:new_weapon(spear)},
+	LS = {make_ref(), survival_weapons:new_weapon(lightsword)},
+	Hands = {make_ref(), survival_weapons:new_weapon(hands)},
+	List2= [Spear, LS, Hands],
+	?assertNot(has_ranged(List2)),
+	LC = {make_ref(), survival_weapons:new_weapon(laser_carbine)},
+	AP = {make_ref(), survival_weapons:new_weapon(auto_pistol)},
+	List3 = [LC, AP],
+	?assert(has_ranged(List3)),
+	?assert(has_ranged(List2 ++ List3)).
+	
+	
 -endif.
 	
 

@@ -21,8 +21,8 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Simple interface client for playing from the shell
  * Win condition check after move
  * Checked Movement, done moving
- * Starvation check
- * Turn/Day Completion
+ * Turn/Day Completion with starvation check
+ * Started Combat mechanics and weapon selection
  
 ## TODO
  * Combat mechanics
@@ -38,7 +38,7 @@ cross a dangerous landscape to reach safe haven in a research station.
  * ANSI colors for map, legend
  * Web client
  
- ## Roadmap
+## Roadmap
  0.1.0 Current work
  0.2.0 Basic game completely implemented with simple client
  0.3.0 Advanced game options implemented
@@ -48,8 +48,9 @@ cross a dangerous landscape to reach safe haven in a research station.
  
 ## Getting Started
  1. Get rebar, build it and replace the rebar that's in the repo
- 2. build and test: `make clean compile eunit`
- 3. From shell, change to ebin directory
+ 2. Command line build and test: `make clean compile eunit`
+ 3. In the Erlang shell: `cd("path/to/repo/directory/survival").` 
+ 3. `code:add_path("ebin").`
  4. `Game = simple_client:start().`
  5. `simple_client:choose_direction(Game, 4).`
  6. `simple_client:quit(Game).` 
