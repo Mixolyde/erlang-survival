@@ -39,12 +39,12 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Web client
  
 ## Roadmap
- 0.1.0 Current work
- 0.2.0 Basic game completely implemented with simple client
- 0.3.0 Advanced game options implemented
- 0.4.0 Advanced scenarios implemented
- 1.0.0 Multiplayer with simple client
- 1.2.0 Random map generation
+ * 0.1.0 Current work
+ * 0.2.0 Basic game completely implemented with simple client
+ * 0.3.0 Advanced game options implemented
+ * 0.4.0 Advanced scenarios implemented
+ * 1.0.0 Multiplayer with simple client
+ * 1.2.0 Random map generation
  
 ## Getting Started
  1. Get rebar, build it and replace the rebar that's in the repo
