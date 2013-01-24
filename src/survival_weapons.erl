@@ -15,7 +15,7 @@
 %% Exported Functions
 %%
 -export([new_weapon/1, get_weight/1, all_weapons/0, purchase_list/0, default_list/0,
-         is_range/1, is_melee/1, is_valid_weapon/3]).
+         is_range/1, is_melee/1, is_valid_weapon/3, fire_weapon/1]).
 
 %%
 %% API Functions
@@ -82,6 +82,14 @@ is_valid_weapon(ranged, Weapon = #weapon{rounds=Rounds}) ->
             %all other weapons are invalid
 			false
 	end.
+
+% fire a weapon and return the updated weapon
+fire_weapon(Weapon = #weapon{rounds=unlimited}) ->
+	Weapon;
+fire_weapon(#weapon{rounds=0}) ->
+	{error, empty_weapon};
+fire_weapon(Weapon = #weapon{rounds=Rounds}) ->
+	Weapon#weapon{rounds=(Rounds-1)}.
 
 
 %%
@@ -161,4 +169,13 @@ is_valid_melee_weapon_ammo_test() ->
 	EmptyWeapon = FullWeapon#weapon{rounds = 0},
 	?assertNot(is_valid_weapon(melee, [{make_ref(), EmptyWeapon}], 1)).
 
+fire_weapon_test() ->
+	FullWeapon = survival_weapons:new_weapon(lightsword),
+	EmptyWeapon = FullWeapon#weapon{rounds = 0},
+	UnlimitedWeapon = survival_weapons:new_weapon(spear),
+	UnlimitedWeapon = fire_weapon(UnlimitedWeapon),
+	FiveRoundsWeapon = FullWeapon#weapon{rounds=5},
+    FiveRoundsWeapon = fire_weapon(FullWeapon),
+	{error, empty_weapon} = fire_weapon(EmptyWeapon). 
+	
 -endif.

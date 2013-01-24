@@ -165,7 +165,8 @@ choose_direction({direction, Direction}, _From,
 			    	display_status(UpdatedStateData),
 			    	Reply = ok,
 			        {reply, Reply, choose_direction, UpdatedStateData};
-				{animal, Animal} ->
+				Animal ->
+					true = is_record(Animal, monster),
 			    	Reply = ok,
 					HasRanged = survival_player:has_ranged(AppliedPlayer#player.weapons),
 					case HasRanged of
@@ -359,9 +360,9 @@ display_status(#state{day=Day, time=Time,
 		{} ->
 			% no combat to report
 			io:format("Not in combat~n");
-		{ranged, Animal} ->
+		{ranged, #monster{mname=Animal}} ->
 			io:format("Ranged Combat Round against ~s~nSelect a ranged weapon or select \"done\".~n", [Animal]);
-		{melee, Animal} ->
+		{melee, #monster{mname=Animal}} ->
 			io:format("Melee Combat Round against ~s~nSelect a melee weapon or select \"done\".~n", [Animal])
 	end,
 	io:format("~n"),
@@ -505,7 +506,9 @@ animal_roll_forest_jalait_ranged_test() ->
 	
 	Result = choose_direction({direction, 3}, self(), StateData),
     {reply, ok, ranged_combat, UpdatedStateData} = Result,
-	?assertEqual({ranged, jalait}, UpdatedStateData#state.combat),
+	{Range, #monster{atom=Animal}} = UpdatedStateData#state.combat,
+	?assertEqual(ranged, Range),
+	?assertEqual(jalait, Animal),
 	ok.
 
 animal_roll_forest_jalait_melee_test() ->
@@ -520,7 +523,9 @@ animal_roll_forest_jalait_melee_test() ->
 	
 	Result = choose_direction({direction, 3}, self(), StateData),
     {reply, ok, melee_combat, UpdatedStateData} = Result,
-	?assertEqual({melee, jalait}, UpdatedStateData#state.combat),
+	{Range, #monster{atom=Animal}} = UpdatedStateData#state.combat,
+	?assertEqual(melee, Range),
+	?assertEqual(jalait, Animal),
 	ok.
 
 no_animal_roll_test() ->

@@ -11,9 +11,24 @@
   -include_lib("eunit/include/eunit.hrl").
 -endif.
 
--define(ANIMALS, [{maizar, a}, {teklek, b}, {corydal, c}, {genebrach, d},
-					  {ceekal, e}, {jalait, f}, {shenthe, g}, {zeget, h}]).
+% {{name, weapon effect category}, random roll letter}
+-define(ANIMALS, [{#monster{atom=maizar, mname="Maizar", category=4}, a}, 
+				  {#monster{atom=teklek, mname="Teklek", category=2}, b}, 
+				  {#monster{atom=corydal, mname="Corydal", category=1}, c}, 
+				  {#monster{atom=genebrach, mname="Genebrach", category=3}, d},
+				  {#monster{atom=ceekal, mname="Ceekal", category=1}, e}, 
+				  {#monster{atom=jalait, mname="Jalait", category=3}, f}, 
+				  {#monster{atom=shenthe, mname="Shenthe", category=2}, g}, 
+				  {#monster{atom=zeget, mname="Zeget", category=2}, h}]).
 
+% weapon strengths against each category based on strength roles
+% strength is the number or lower to roll on a d6 that hits
+% 0, 2, 3, 4, 5
+% strengths 8 and 9 always hit
+-define(WEAPON_EFFECTS, [[1, 3, 4, 5, 6],
+						 [0, 2, 3, 4, 5],
+						 [0, 1, 2, 3, 4],
+						 [0, 0, 1, 2, 4]]).
 -define(TERRAIN_ANIMALS, 
     [{mountains, [a, b, c, d]},
      {hills,  [b, c, d, e]},
@@ -29,7 +44,7 @@
 %%
 %% Exported Functions
 %%
--export([animal_roll/1]).
+-export([animal_roll/1, animal_attack/2]).
 
 %%
 %% API Functions
@@ -54,9 +69,12 @@ animal_roll(Terrain, Roll) ->
 		Roll ->   % rolls 3, 4, 5, 6 index into the terrain animal list
 			{Terrain, LetterList} = lists:keyfind(Terrain, 1, ?TERRAIN_ANIMALS),
 			Letter = lists:nth(Roll - 2, LetterList),
-			{Atom, Letter} = lists:keyfind(Letter, 2, ?ANIMALS),
-			{animal, Atom}
+			{Monster, Letter} = lists:keyfind(Letter, 2, ?ANIMALS),
+			Monster
 	end.
+
+animal_attack(_Weapon, {Animal, _Category}) ->
+	{success, Animal}.
 
 %%
 %% Local Functions
@@ -69,14 +87,14 @@ animal_roll_test() ->
 	  fun(Terrain) ->
 		?assertEqual({no_animal}, animal_roll(Terrain, 1)),
 		?assertEqual({no_animal}, animal_roll(Terrain, 2)),
-		{animal, Atom3} = animal_roll(Terrain, 3),
-		{animal, Atom4} = animal_roll(Terrain, 4),
-		{animal, Atom5} = animal_roll(Terrain, 5),
-		{animal, Atom6} = animal_roll(Terrain, 6),
-		?assert(is_atom(Atom3)),
-		?assert(is_atom(Atom4)),
-		?assert(is_atom(Atom5)),
-		?assert(is_atom(Atom6))
+		Animal3 = animal_roll(Terrain, 3),
+		Animal4 = animal_roll(Terrain, 4),
+		Animal5 = animal_roll(Terrain, 5),
+		Animal6 = animal_roll(Terrain, 6),
+		?assert(is_record(Animal3, monster)),
+		?assert(is_record(Animal4, monster)),
+		?assert(is_record(Animal5, monster)),
+		?assert(is_record(Animal6, monster))
       end, 
 	  ?TERRAIN_WITH_ANIMALS),
 	% test always no animal rolled in these terrains
