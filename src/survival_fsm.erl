@@ -194,17 +194,28 @@ choose_direction({direction, Direction}, _From,
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
+ranged_combat({done}, _From, 
+			  #state{combat={ranged, Animal}} = StateData) ->
+	% continue to melee
+	Reply = ok,
+	{reply, Reply, melee_combat, StateData#state{combat={melee, Animal}} };
 ranged_combat({weapon, Choice}, _From, 
 			  #state{combat={ranged, Animal}} = StateData) when is_integer(Choice)->
 	% TODO ranged combat round
+	Valid = survival_weapons:is_valid_weapon(ranged, StateData#state.player#player.weapons, Choice),
 	% if not a valid weapon choice return error
-	% fire weapon
-	% check for animal death
-	% animal combat
-	% check for player death
-	% continue to melee
-	Reply = ok,
-	{reply, Reply, melee_combat, StateData#state{combat={melee, Animal}} }.
+	if
+		Valid ->
+			% fire weapon
+			% check for animal death
+			% continue to melee
+			Reply = ok,
+			{reply, Reply, melee_combat, StateData#state{combat={melee, Animal}} };
+		true ->
+			% not a valid weapon choice, return error
+			{reply, {invalid_move, "Not a valid weapon choice"}, ranged_combat, StateData}
+	end.
+
 
 %% --------------------------------------------------------------------
 %% Func: melee_combat/3
@@ -217,6 +228,7 @@ ranged_combat({weapon, Choice}, _From,
 %% --------------------------------------------------------------------
 melee_combat({weapon, Choice}, _From, StateData) when is_integer(Choice)->
 	% TODO melee combat round
+	_Valid = survival_weapons:is_valid_weapon(melee, StateData#state.player#player.weapons, Choice), 
 	% if not a valid weapon choice return error
 	% fire weapon
 	% check for animal death

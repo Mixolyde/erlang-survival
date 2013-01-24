@@ -14,7 +14,8 @@
 %%
 %% Exported Functions
 %%
--export([new_weapon/1, get_weight/1, all_weapons/0, purchase_list/0, default_list/0]).
+-export([new_weapon/1, get_weight/1, all_weapons/0, purchase_list/0, default_list/0,
+         is_range/1, is_melee/1, is_valid_weapon/3]).
 
 %%
 %% API Functions
@@ -43,11 +44,45 @@ get_weight(Weapon) ->
 	WeaponRecord = new_weapon(Weapon),
 	WeaponRecord#weapon.weight.
 
+is_range(#weapon{range = Str}) -> is_integer(Str).
+
+is_melee(#weapon{melee = Str}) -> is_integer(Str).
+
+
 %[hands, spear, laser_carbine, auto_pistol, 
 %lightsword, rifle, grenade_launcher, energy_blaster]
 all_weapons() -> ?WEAPON_LIST.
 purchase_list() -> all_weapons() -- [hands].
 default_list() -> [spear, lightsword, auto_pistol, rifle].
+
+is_valid_weapon(Type, Weapons, Choice) when Choice > 0, Choice =< length(Weapons) ->
+	{_Ref, Weapon} = lists:nth(Choice, Weapons),
+    is_valid_weapon(Type, Weapon);
+is_valid_weapon(_Any, _Weapons, _Choice) -> false.
+
+is_valid_weapon(melee, Weapon = #weapon{rounds=Rounds}) ->
+	IsMelee = is_melee(Weapon),
+    if
+		IsMelee, is_integer(Rounds) andalso Rounds > 0 ->
+			true;
+		IsMelee, Rounds == unlimited ->
+			true;
+        true ->
+            %all other weapons are invalid
+			false
+	end;
+is_valid_weapon(ranged, Weapon = #weapon{rounds=Rounds}) ->
+	IsRanged = is_range(Weapon),
+    if
+		IsRanged, is_integer(Rounds) andalso Rounds > 0 ->
+			true;
+		IsRanged, Rounds == unlimited ->
+			true;
+        true ->
+            %all other weapons are invalid
+			false
+	end.
+
 
 %%
 %% Local Functions
@@ -59,6 +94,12 @@ default_list() -> [spear, lightsword, auto_pistol, rifle].
 %%% Eunit test functions
 %% --------------------------------------------------------------------
 -ifdef(TEST).
+default_list_data() ->
+	[{make_ref(), survival_weapons:new_weapon(Weapon)} || Weapon <- default_list()].
+
+default_list_data_test() ->
+	?assertEqual(length(default_list()), length(default_list_data())).
+
 purchase_list_test() ->
 	?assertEqual(length(all_weapons()) - 1, length(purchase_list())).
 
@@ -72,5 +113,52 @@ new_weapons_test() ->
 
 bad_weapon_test() ->
 	?assertError({unknown_weapon_type, _Any}, new_weapon(junk)).
+
+range_and_melee_test() ->
+    ?assert(is_range(new_weapon(auto_pistol))),
+	?assert(is_range(new_weapon(laser_carbine))),
+	?assert(is_range(new_weapon(rifle))),
+	?assert(is_melee(new_weapon(auto_pistol))),
+	?assert(is_melee(new_weapon(hands))),
+	?assert(is_melee(new_weapon(lightsword))),
+	?assertNot(is_melee(new_weapon(laser_carbine))),
+	?assertNot(is_melee(new_weapon(rifle))),
+	?assertNot(is_range(new_weapon(hands))),
+	?assertNot(is_range(new_weapon(lightsword))).
+	
+
+is_valid_weapon_list_size_test() ->
+	?assertNot(is_valid_weapon(melee, [], -1)),
+	?assertNot(is_valid_weapon(melee, [], 0)),
+	?assertNot(is_valid_weapon(melee, [], 1)),
+	?assertNot(is_valid_weapon(melee, default_list_data(), length(default_list_data()) + 1)),
+	?assertNot(is_valid_weapon(ranged, [], -1)),
+	?assertNot(is_valid_weapon(ranged, [], 0)),
+	?assertNot(is_valid_weapon(ranged, [], 1)),
+	?assertNot(is_valid_weapon(ranged, default_list_data(), 0)),
+	?assertNot(is_valid_weapon(ranged, default_list_data(), length(default_list_data()) + 1)).
+
+is_valid_melee_weapon_test() ->
+	?assert(is_valid_weapon(melee, default_list_data(), 1)),
+	?assert(is_valid_weapon(melee, default_list_data(), 2)),
+	?assert(is_valid_weapon(melee, default_list_data(), 3)),
+	?assertNot(is_valid_weapon(melee, default_list_data(), 4)).
+
+is_valid_ranged_weapon_test() ->
+	?assertNot(is_valid_weapon(ranged, default_list_data(), 1)),
+	?assertNot(is_valid_weapon(ranged, default_list_data(), 2)),
+	?assert(is_valid_weapon(ranged, default_list_data(), 3)),
+	?assert(is_valid_weapon(ranged, default_list_data(), 4)).
+
+is_valid_ranged_weapon_ammo_test() ->
+	FullWeapon = survival_weapons:new_weapon(rifle),
+	EmptyWeapon = FullWeapon#weapon{rounds = 0},
+	
+	?assertNot(is_valid_weapon(ranged, [{make_ref(), EmptyWeapon}], 1)).
+
+is_valid_melee_weapon_ammo_test() ->
+	FullWeapon = survival_weapons:new_weapon(lightsword),
+	EmptyWeapon = FullWeapon#weapon{rounds = 0},
+	?assertNot(is_valid_weapon(melee, [{make_ref(), EmptyWeapon}], 1)).
 
 -endif.
