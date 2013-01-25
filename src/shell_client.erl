@@ -5,6 +5,14 @@
 -module(shell_client).
 
 %%
+%% Usage:
+%%   Game = shell_client:start("Name").
+%%   shell_client:choose_direction(Game, 5).
+%%   shell_client:done(Game).
+%%   shell_client:choose_weapon(Game, 5).
+%%   shell_client:quit(Game).
+
+%%
 %% Include files
 %%
 
@@ -41,10 +49,10 @@ display_legend(FSM) ->
 done(FSM) ->
 	survival_fsm:send_done(FSM).
 
-choose_direction(FSM, Direction) ->
+choose_direction(FSM, Direction) when is_integer(Direction) ->
 	survival_fsm:send_direction_choice(FSM, Direction).
 
-choose_weapon(FSM, Weapon) ->
+choose_weapon(FSM, Weapon) when is_integer(Weapon) ->
 	survival_fsm:send_weapon_choice(FSM, Weapon).
 
 get_state(FSM) ->

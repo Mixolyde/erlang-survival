@@ -73,8 +73,22 @@ animal_roll(Terrain, Roll) ->
 			Monster
 	end.
 
-animal_attack(_Weapon, {Animal, _Category}) ->
-	{success, Animal}.
+animal_attack(Strength, _Animal) when is_integer(Strength) andalso Strength > 7 ->
+	{success};
+animal_attack(0, Animal) ->
+	%stupid hack because the weapon strengths are 0, 2, 3, 4, 5
+	animal_attack(1, Animal);
+animal_attack(Index, #monster{category=Cat}) when is_integer(Index) ->
+	Roll = random:uniform(6),
+	HitList = lists:nth(Cat, ?WEAPON_EFFECTS),
+	Target = lists:nth(Index, HitList),
+	io:format("Rolling for combat. Target: ~b Roll:~b~n", [Target, Roll]),
+	if 
+		Roll =< Target ->
+			{success};
+		true ->
+			{failure}
+	end.
 
 %%
 %% Local Functions
@@ -101,5 +115,17 @@ animal_roll_test() ->
 	?assertEqual({no_animal}, animal_roll(station)),
 	?assertEqual({no_animal}, animal_roll(empty)),
 	ok.
+
+animal_attack_test() ->
+	?assertEqual({success}, animal_attack(8, #monster{category=1})),
+	?assertEqual({success}, animal_attack(9, #monster{category=1})),
+	
+	% reset RNG to get a roll of 4 on d6
+	random:seed(1, 1, 1000),
+	?assertEqual({success}, animal_attack(3, #monster{category=1})),
+	random:seed(1, 1, 1000),
+	?assertEqual({failure}, animal_attack(3, #monster{category=2})),
+	% test 0 to 1 index conversion
+	?assertEqual({failure}, animal_attack(0, #monster{category=2})).
 
 -endif.

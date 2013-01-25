@@ -23,6 +23,7 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Checked Movement, done moving
  * Turn/Day Completion with starvation check
  * Started Combat mechanics and weapon selection
+ * Melee combat mechanics
  
 ## TODO
  * Combat mechanics
