@@ -10,34 +10,28 @@ cross a dangerous landscape to reach safe haven in a research station.
 
 ## Completed
  * Rebar setup of application according to OTP style
- * Minimal FSM behavior for running the game
- * Some records and lists in the header
- * New weapon and player record creators
+ * Record structures and data in header
  * Eunit tests for current functions and start/stop of FSM
  * Basic map data structure and validity tests
- * Text map display with Player position
- * Legend display for direction choice map characters
- * Status display for player and game info
+ * Status, Map and Map Legend displays
  * Simple interface client for playing from the shell
  * Win condition check after move
- * Checked Movement, done moving
- * Turn/Day Completion with starvation check
- * Started Combat mechanics and weapon selection
- * Melee combat mechanics
+ * Movement, Turn/Day Completion with starvation check
+ * Range round combat mechanics
  
 ## TODO
- * Combat mechanics
+ * Melee Combat mechanics
  * Initial weapon loadout choosing
- * State transitions in/out of combat
  * Multi-player server and client
  * Event handler for tracking errors
  * Graphics
  * Advanced game modes
  * Options
  * Procedural map generation
- * cecho based client
+ * color command line client
  * ANSI colors for map, legend
  * Web client
+ * AI clients for MP testing
  
 ## Roadmap
  * 0.1.0 Current work
