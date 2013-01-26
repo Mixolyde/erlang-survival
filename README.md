@@ -23,6 +23,7 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Melee Combat mechanics
  * Initial weapon loadout choosing
  * Multi-player server and client
+ * App/Super hierarchy
  * Event handler for tracking errors
  * Graphics
  * Advanced game modes

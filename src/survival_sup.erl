@@ -9,6 +9,8 @@
 %% Supervisor callbacks
 -export([init/1]).
 
+% TODO setup supervisor to start child FSM procs and monitor them
+
 %% Helper macro for declaring children of supervisor
 -define(CHILD(I, Type), {I, {I, start_link, []}, permanent, 5000, Type, [I]}).
 

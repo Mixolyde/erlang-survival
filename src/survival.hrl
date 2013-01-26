@@ -14,7 +14,7 @@
 -record(player,  {ws = ?MAX_WOUNDS, weapons = [], mp = ?MAX_MP, 
                   pname = "TestPlayer", loc = {1,1}, maxweight = ?MAX_WEIGHT}).
 
--record(monster, {atom, mname, category}).
+-record(monster, {atom, mname, category, attack}).
 
 -record(weapon,  {atom, displayname, weight, melee, range, rounds, maxrounds}).
 

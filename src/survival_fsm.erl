@@ -217,7 +217,7 @@ ranged_combat({weapon, Choice}, _From,
 			{Ref, Weapon} = lists:nth(Choice, WeaponList),
 			UpdatedWeaponList = lists:keyreplace(Ref, 1, WeaponList, {Ref, survival_weapons:fire_weapon(Weapon)}),
 			% check attack success
-			case survival_combat:animal_attack(Weapon#weapon.range, Animal) of
+			case survival_combat:player_attack(Weapon#weapon.range, Animal) of
 				{success} ->
 					io:format("You hit the ~s!~n", [Animal#monster.mname]),
 					% check for animal death
@@ -228,17 +228,19 @@ ranged_combat({weapon, Choice}, _From,
 							         player=Player#player{weapons=UpdatedWeaponList} },
 					display_status(UpdatedStateData),
 					Reply = ok,
-					{reply, Reply, choose_direction, UpdatedStateData};
+					NextState = choose_direction;
 				{failure} ->
 					io:format("You missed the ~s!~n", [Animal#monster.mname]),
 					% update the weapon list and switch to melee combat
+					Combat = {melee, Animal},
 					UpdatedStateData = StateData#state{player=Player#player{weapons=UpdatedWeaponList},
-													   combat={melee, Animal} },
+													   combat=Combat },
 					display_status(UpdatedStateData),
 					% continue to melee
 					Reply = ok,
-					{reply, Reply, melee_combat, UpdatedStateData}
-			end;
+					NextState = melee_combat
+			end,
+			{reply, Reply, NextState, UpdatedStateData};
 		true ->
 			% not a valid weapon choice, return error
 			{reply, {invalid_move, invalid_weapon_choice}, ranged_combat, StateData}
@@ -259,20 +261,73 @@ ranged_combat(Event, _From, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
-melee_combat({weapon, Choice}, _From, StateData) when is_integer(Choice)->
+melee_combat({weapon, Choice}, _From, 
+			 StateData = #state{player=Player, combat={melee, Animal}}) 
+  when is_integer(Choice) ->
 	% TODO melee combat round
-	_Valid = survival_weapons:is_valid_weapon(melee, StateData#state.player#player.weapons, Choice), 
-	% if not a valid weapon choice return error
-	% fire weapon
-	% check for animal death
-	% animal combat
-	% check for player death
-	% continue to melee
-	UpdatedStateData = StateData#state{combat={}},
-	display_map(UpdatedStateData),
-   	display_status(UpdatedStateData),
-	Reply = ok,
-	{reply, Reply, choose_direction, UpdatedStateData };
+	WeaponList = Player#player.weapons,
+	Valid = survival_weapons:is_valid_weapon(melee, (StateData#state.player)#player.weapons, Choice),
+	if
+		Valid ->
+			% get weapon and fire it 
+			{Ref, Weapon} = lists:nth(Choice, WeaponList),
+			UpdatedWeaponList = lists:keyreplace(Ref, 1, WeaponList, {Ref, survival_weapons:fire_weapon(Weapon)}),
+			% check attack success
+			case survival_combat:player_attack(Weapon#weapon.melee, Animal) of
+				{success} ->
+					io:format("You hit the ~s!~n", [Animal#monster.mname]),
+					% check for animal death
+					io:format("You killed the ~s!~n", [Animal#monster.mname]),
+					% return to normal move state
+					Combat = {},
+					UpdatedStateData = StateData#state{combat=Combat, 
+							         player=Player#player{weapons=UpdatedWeaponList} },
+					display_status(UpdatedStateData),
+					Reply = ok,
+					{reply, Reply, choose_direction, UpdatedStateData};
+				{failure} ->
+					io:format("You missed the ~s!~n", [Animal#monster.mname]),
+					
+					% roll for animal attack vs. player
+					case survival_combat:animal_attack(Animal) of
+						{success} ->
+							io:format("The ~s hit you!~n", [Animal#monster.mname]),
+							% subtrack a wound point
+							CurrentWS = Player#player.ws,
+							WoundedPlayer = Player#player{ws=CurrentWS - 1},
+							% check for player death
+							case WoundedPlayer#player.ws of
+								0 ->
+									io:format("You have been killed by the ~s!~nFinalStatus:~n~n", [Animal#monster.mname]),
+									UpdatedStateData = StateData#state{player=WoundedPlayer#player{weapons=UpdatedWeaponList} },
+									display_status(UpdatedStateData),
+									{stop, normal, lost_game, UpdatedStateData};
+								_Else ->
+									% on to the next melee round
+									% update the weapon list and player
+									UpdatedStateData = StateData#state{player=Player#player{weapons=UpdatedWeaponList},
+																	   combat={melee, Animal} },
+									display_status(UpdatedStateData),
+									% continue to melee
+									Reply = ok,
+									{reply, Reply, melee_combat, UpdatedStateData}
+							end;
+						{failure} ->
+							io:format("The ~s missed you!~n", [Animal#monster.mname]),		
+
+							% update the weapon list and player
+							UpdatedStateData = StateData#state{player=Player#player{weapons=UpdatedWeaponList},
+															   combat={melee, Animal} },
+							display_status(UpdatedStateData),
+							% continue to melee
+							Reply = ok,
+							{reply, Reply, melee_combat, UpdatedStateData}
+					end
+			end;
+		true ->
+			% not a valid weapon choice, return error
+			{reply, {invalid_move, invalid_weapon_choice}, ranged_combat, StateData}
+	end;
 melee_combat(Event, _From, StateData) ->
 	unexpected(Event, melee_combat),
     Reply = ok,
@@ -607,6 +662,40 @@ ranged_combat_miss_test() ->
 	Result = ranged_combat({weapon, 2}, self(), CombatStateData),
     {reply, ok, melee_combat, UpdatedStateData} = Result,
 	?assertEqual({melee, #monster{atom=maizar, mname="Maizar", category=4}}, UpdatedStateData#state.combat),
+	ok.
+
+melee_combat_hit_test() ->
+	StateData = basic_scenario_test_state(),
+	
+	% add melee combat to state
+	% maizar will be hit on a roll of 1
+	CombatStateData = StateData#state{combat={melee, #monster{atom=maizar, mname="Maizar", category=4, attack=3}}},
+	
+	% reset RNG to get a roll of 1 on d6
+	random:seed(1, 1, 1),
+	
+	print_weapons(CombatStateData#state.player#player.weapons),
+	
+	Result = melee_combat({weapon, 4}, self(), CombatStateData),
+    {reply, ok, choose_direction, UpdatedStateData} = Result,
+	?assertEqual({}, UpdatedStateData#state.combat),
+	ok.
+
+melee_combat_miss_and_be_missed_test() ->
+	StateData = basic_scenario_test_state(),
+	
+	% add melee combat to state
+	% attack=0 will always miss
+	CombatStateData = StateData#state{combat={melee, #monster{atom=maizar, mname="Maizar", category=4, attack=0}}},
+	
+	% reset RNG to get a roll of 4 on d6
+	random:seed(1, 1, 1000),
+	
+	Result = melee_combat({weapon, 1}, self(), CombatStateData),
+    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	{Range, Animal} = UpdatedStateData#state.combat,
+	?assertEqual(melee, Range),
+	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=0}, Animal),
 	ok.
 
 % test repeatedly selecting done for movement
