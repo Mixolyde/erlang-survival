@@ -9,18 +9,15 @@ cross a dangerous landscape to reach safe haven in a research station.
  * Board Game http://boardgamegeek.com/boardgame/3042/survival-the-barbarian
 
 ## Completed
- * Rebar setup of application according to OTP style
- * Record structures and data in header
- * Eunit tests for current functions and start/stop of FSM
+ * Rebar setup of application
+ * Record structures and data in header file
+ * Eunit tests for current functions and start/stop of FSM/App
  * Basic map data structure and validity tests
  * Status, Map and Map Legend displays
  * Simple interface client for playing from the shell
- * Win condition check after move
- * Movement, Turn/Day Completion with starvation check
- * Range round combat mechanics
+ * All combat, movement and turn mechanics
  
 ## TODO
- * Melee Combat mechanics
  * Initial weapon loadout choosing
  * Multi-player server and client
  * App/Super hierarchy

@@ -264,7 +264,6 @@ ranged_combat(Event, _From, StateData) ->
 melee_combat({weapon, Choice}, _From, 
 			 StateData = #state{player=Player, combat={melee, Animal}}) 
   when is_integer(Choice) ->
-	% TODO melee combat round
 	WeaponList = Player#player.weapons,
 	Valid = survival_weapons:is_valid_weapon(melee, (StateData#state.player)#player.weapons, Choice),
 	if
@@ -305,7 +304,7 @@ melee_combat({weapon, Choice}, _From,
 								_Else ->
 									% on to the next melee round
 									% update the weapon list and player
-									UpdatedStateData = StateData#state{player=Player#player{weapons=UpdatedWeaponList},
+									UpdatedStateData = StateData#state{player=WoundedPlayer#player{weapons=UpdatedWeaponList},
 																	   combat={melee, Animal} },
 									display_status(UpdatedStateData),
 									% continue to melee
@@ -696,6 +695,42 @@ melee_combat_miss_and_be_missed_test() ->
 	{Range, Animal} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=0}, Animal),
+	ok.
+
+melee_combat_miss_and_be_hit_test() ->
+	StateData = basic_scenario_test_state(),
+	
+	% add melee combat to state
+	% attack=6 will always hit
+	CombatStateData = StateData#state{combat={melee, #monster{atom=maizar, mname="Maizar", category=4, attack=6}}},
+	
+	% reset RNG to get a roll of 4 on d6
+	random:seed(1, 1, 1000),
+	
+	Result = melee_combat({weapon, 1}, self(), CombatStateData),
+    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	{Range, Animal} = UpdatedStateData#state.combat,
+	?assertEqual(melee, Range),
+	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=6}, Animal),
+	?assertEqual(5, UpdatedStateData#state.player#player.ws),
+	ok.
+
+melee_combat_miss_and_be_killed_test() ->
+	StateData = basic_scenario_test_state(),
+	LowHealthStateData = StateData#state{player = StateData#state.player#player{ws=1}},
+	
+	% add melee combat to state
+	% attack=6 will always hit
+	CombatStateData = LowHealthStateData#state{combat={melee, 
+													   #monster{atom=maizar, 
+																mname="Maizar", 
+																category=4, attack=6}}},
+	
+	% reset RNG to get a roll of 4 on d6
+	random:seed(1, 1, 1000),
+	
+	{stop, normal, lost_game, LostStateData} = melee_combat({weapon, 1}, self(), CombatStateData),
+	?assertEqual(0, LostStateData#state.player#player.ws),
 	ok.
 
 % test repeatedly selecting done for movement
