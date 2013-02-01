@@ -85,4 +85,22 @@ display_test() ->
 	display_status(Game),
 	ok = shell_client:quit(Game).
 
+send_commands_test() ->
+	Game = shell_client:start("Simple Client"),
+	
+	% set a random seed for predictable game play
+	random:seed(1, 1, 1000),
+	ok = done(Game),
+	ok = choose_direction(Game, 6),
+	ok = choose_weapon(Game, 2),
+    ok = shell_client:quit(Game).
+
+get_state_test() ->
+	Game = shell_client:start("Simple Client"),
+	
+	% set a random seed for predictable game play
+	random:seed(1, 1, 1000),
+	State = shell_client:get_state(Game),
+	?assertNotEqual(ok, State).
+
 -endif.

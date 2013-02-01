@@ -21,9 +21,9 @@
 		 send_display_map/1, send_done/1, get_client_state/1]).
 
 %% gen_fsm callbacks
--export([init/1, choose_direction/2, choose_direction/3, handle_event/3,
+-export([init/1, select_loadout/3, choose_direction/3, handle_event/3,
 	 handle_sync_event/4, handle_info/3, terminate/3, code_change/4,
-		 ranged_combat/3, melee_combat/3]).
+		 combat/3]).
 
 -record(state, {map, player, combat={}, day, time, scenario, options}).
 
@@ -83,20 +83,37 @@ get_client_state(FSM) ->
 init([Player, Map]) ->
 	FirstState = basic_scenario_state(Player, Map),
 	notice(FirstState, "Initial FSM State created: ~p~n", [printable_state(FirstState)]),
-	display_map(FirstState),
-	display_status(FirstState),
-	display_legend(FirstState),
+
+	notice(FirstState, "Welcome to Survival!~nChoose your player's initial weapon loadout.~n", []),
 	
-    {ok, choose_direction, FirstState}.
+	print_purchase_list(),
+	
+    {ok, select_loadout, FirstState}.
 
 %% --------------------------------------------------------------------
-%% Func: choose_direction/2
-%% Returns: {next_state, NextStateName, NextStateData}          |
-%%          {next_state, NextStateName, NextStateData, Timeout} |
-%%          {stop, Reason, NewStateData}
+%% Func: select_loadout/3
+%% Returns: {next_state, NextStateName, NextStateData}            |
+%%          {next_state, NextStateName, NextStateData, Timeout}   |
+%%          {reply, Reply, NextStateName, NextStateData}          |
+%%          {reply, Reply, NextStateName, NextStateData, Timeout} |
+%%          {stop, Reason, NewStateData}                          |
+%%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
-choose_direction(_Event, StateData) ->
-    {next_state, choose_direction, StateData}.
+select_loadout({done}, _From, StateData) ->
+	% continue to main game
+	display_map(StateData),
+	display_status(StateData),
+	display_legend(StateData),
+	notice(StateData, "You have landed, choose a direction.~n"),
+	Reply = ok,
+	{reply, Reply, choose_direction, StateData};
+select_loadout({weapon, Choice}, _From, #state{player=_Player} = StateData) when is_integer(Choice) ->
+	% check incoming choice for validity
+	
+
+	print_purchase_list(),
+	Reply = ok,
+	{reply, Reply, select_loadout, StateData}.
 
 %% --------------------------------------------------------------------
 %% Func: choose_direction/3
@@ -124,7 +141,7 @@ choose_direction({done}, _From, StateData) ->
 			NewStateData = StateData#state{player=NewPlayer, time=am, day= NewDay},
 			if 
 				NewDay > ?DAYS_OF_FOOD ->
-					io:format("~n~nYou have run out of food and died!~nFinal Status:~n~n"),
+					notice(NewStateData, "~n~nYou have run out of food and died!~nFinal Status:~n~n"),
 					display_status(NewStateData),
 					{stop, normal, lost_game, NewStateData};
 				true ->
@@ -177,13 +194,13 @@ choose_direction({direction, Direction}, _From,
 								combat= {ranged, Animal}},
 							display_map(UpdatedStateData),
 					    	display_status(UpdatedStateData),
-					        {reply, Reply, ranged_combat, UpdatedStateData};
+					        {reply, Reply, combat, UpdatedStateData};
 						false ->
 							UpdatedStateData = StateData#state{player = AppliedPlayer, 
 								combat= {melee, Animal}},
 							display_map(UpdatedStateData),
 					    	display_status(UpdatedStateData),
-							{reply, Reply, melee_combat, UpdatedStateData}
+							{reply, Reply, combat, UpdatedStateData}
 					end
 			end
     end;
@@ -194,7 +211,7 @@ choose_direction(Event, _From, StateData) ->
 
 
 %% --------------------------------------------------------------------
-%% Func: ranged_combat/3
+%% Func: combat/3
 %% Returns: {next_state, NextStateName, NextStateData}            |
 %%          {next_state, NextStateName, NextStateData, Timeout}   |
 %%          {reply, Reply, NextStateName, NextStateData}          |
@@ -202,15 +219,14 @@ choose_direction(Event, _From, StateData) ->
 %%          {stop, Reason, NewStateData}                          |
 %%          {stop, Reason, Reply, NewStateData}
 %% --------------------------------------------------------------------
-ranged_combat({done}, _From, 
-			  #state{combat={_Range, Animal}} = StateData) ->
+combat({done}, _From, #state{combat={ranged, Animal}} = StateData) ->
 	% continue to melee
 	UpdatedStateData = StateData#state{combat={melee, Animal}},
 	display_status(UpdatedStateData),
 	Reply = ok,
-	{reply, Reply, melee_combat, UpdatedStateData};
-ranged_combat({weapon, Choice}, _From, 
-			  #state{combat={ranged, Animal}, player=Player} = StateData) when is_integer(Choice)->
+	{reply, Reply, combat, UpdatedStateData};
+combat({weapon, Choice}, _From,
+#state{combat={ranged, Animal}, player=Player} = StateData) when is_integer(Choice) ->
 	WeaponList = Player#player.weapons,
 	Valid = survival_weapons:is_valid_weapon(ranged, WeaponList, Choice),
 	% if not a valid weapon choice return error
@@ -241,31 +257,14 @@ ranged_combat({weapon, Choice}, _From,
 					display_status(UpdatedStateData),
 					% continue to melee
 					Reply = ok,
-					NextState = melee_combat
+					NextState = combat
 			end,
 			{reply, Reply, NextState, UpdatedStateData};
 		true ->
 			% not a valid weapon choice, return error
-			{reply, {invalid_move, invalid_weapon_choice}, ranged_combat, StateData}
+			{reply, {invalid_move, invalid_weapon_choice}, combat, StateData}
 	end;
-ranged_combat(Event, _From, StateData) ->
-	unexpected(Event, ranged_combat),
-    Reply = ok,
-    {reply, Reply, ranged_combat, StateData}.
-
-
-
-%% --------------------------------------------------------------------
-%% Func: melee_combat/3
-%% Returns: {next_state, NextStateName, NextStateData}            |
-%%          {next_state, NextStateName, NextStateData, Timeout}   |
-%%          {reply, Reply, NextStateName, NextStateData}          |
-%%          {reply, Reply, NextStateName, NextStateData, Timeout} |
-%%          {stop, Reason, NewStateData}                          |
-%%          {stop, Reason, Reply, NewStateData}
-%% --------------------------------------------------------------------
-melee_combat({done}, _From, 
-			  #state{player=Player, combat={_Range, Animal}} = StateData) ->
+combat({done}, _From, #state{player=Player, combat={melee, Animal}} = StateData) ->
     % skip player attack, roll animal
 	io:format("You do not attack!~n"),
 	
@@ -291,7 +290,7 @@ melee_combat({done}, _From,
 					display_status(UpdatedStateData),
 					% continue to melee
 					Reply = ok,
-					{reply, Reply, melee_combat, UpdatedStateData}
+					{reply, Reply, combat, UpdatedStateData}
 			end;
 		{failure} ->
 			io:format("The ~s missed you!~n", [Animal#monster.mname]),		
@@ -301,9 +300,9 @@ melee_combat({done}, _From,
 			display_status(UpdatedStateData),
 			% continue to melee
 			Reply = ok,
-			{reply, Reply, melee_combat, UpdatedStateData}
+			{reply, Reply, combat, UpdatedStateData}
 	end;
-melee_combat({weapon, Choice}, _From, 
+combat({weapon, Choice}, _From, 
 			 StateData = #state{player=Player, combat={melee, Animal}}) 
   when is_integer(Choice) ->
 	WeaponList = Player#player.weapons,
@@ -351,7 +350,7 @@ melee_combat({weapon, Choice}, _From,
 									display_status(UpdatedStateData),
 									% continue to melee
 									Reply = ok,
-									{reply, Reply, melee_combat, UpdatedStateData}
+									{reply, Reply, combat, UpdatedStateData}
 							end;
 						{failure} ->
 							io:format("The ~s missed you!~n", [Animal#monster.mname]),		
@@ -362,17 +361,18 @@ melee_combat({weapon, Choice}, _From,
 							display_status(UpdatedStateData),
 							% continue to melee
 							Reply = ok,
-							{reply, Reply, melee_combat, UpdatedStateData}
+							{reply, Reply, combat, UpdatedStateData}
 					end
 			end;
 		true ->
 			% not a valid weapon choice, return error
-			{reply, {invalid_move, invalid_weapon_choice}, melee_combat, StateData}
+			{reply, {invalid_move, invalid_weapon_choice}, combat, StateData}
 	end;
-melee_combat(Event, _From, StateData) ->
-	unexpected(Event, melee_combat),
+combat(Event, _From, StateData) ->
+	unexpected(Event, combat),
     Reply = ok,
-    {reply, Reply, melee_combat, StateData}.
+    {reply, Reply, combat, StateData}.
+
 %% --------------------------------------------------------------------
 %% Func: handle_event/3
 %% Returns: {next_state, NextStateName, NextStateData}          |
@@ -464,6 +464,8 @@ basic_scenario_state(Player, Map) ->
 
 % Send players a notice. This could be messages to their clients
 % but for our purposes, outputting to the shell is enough.
+notice(#state{player=#player{pname=N}}, Str) ->
+  io:format("~s: "++Str++"~n", [N]).
 notice(#state{player=#player{pname=N}}, Str, Args) ->
   io:format("~s: "++Str++"~n", [N|Args]).
  
@@ -501,6 +503,13 @@ display_status(#state{day=Day, time=Time,
 			io:format("Melee Combat Round against ~s~nSelect a melee weapon or select \"done\".~n", [Animal])
 	end,
 	io:format("~n"),
+	ok.
+
+print_purchase_list() ->
+	% display the list available for purchase
+	CompleteWeaponList = [survival_weapons:new_weapon(Weapon) || Weapon <- survival_weapons:purchase_list()],
+	PrintableList = [{make_ref(), WeaponRec} || WeaponRec <- CompleteWeaponList],
+	print_weapons(PrintableList),
 	ok.
 
 print_weapons(Weapons) ->
@@ -557,6 +566,14 @@ start_end_test() ->
 	ok = survival_fsm:quit(FSM),
 	?assertNot(is_process_alive(FSM)).
 
+start_link_end_test() ->
+	{ok, FSM} = survival_fsm:start_link("Survival FSM"),
+	?assert(is_pid(FSM)),
+	?assert(is_process_alive(FSM)),
+	% sync call, shouldn't need time to shutdown
+	ok = survival_fsm:quit(FSM),
+	?assertNot(is_process_alive(FSM)).
+
 display_test() ->
 	FSM = test_start(),
     send_display_legend(FSM),
@@ -581,6 +598,17 @@ get_client_state_test() ->
 	am = State#state.time,
 	test_end(Game).
 
+send_commands_test() ->
+	Game = test_start(),
+	
+	% set a random seed for predictable game play
+	random:seed(1, 1, 1000),
+	ok = send_done(Game),
+	ok = send_direction_choice(Game, 6),
+	ok = send_weapon_choice(Game, 2),
+    test_end(Game).
+
+
 print_weapons_test() ->
 	% create some weapon lists
 	AllWeapons = [{make_ref(), survival_weapons:new_weapon(WeaponAtom)} || WeaponAtom <- ?WEAPON_LIST],
@@ -588,7 +616,7 @@ print_weapons_test() ->
 	OneWeapon = [{make_ref(), survival_weapons:new_weapon(hands)}],
 	print_weapons(OneWeapon).
 
-invalid_direction_test() ->
+invalid_direction_outside_range_test() ->
     Player = survival_player:new_player(),
     Map = survival_map:default_map(),
     State = #state{map=Map, player=Player},
@@ -597,6 +625,14 @@ invalid_direction_test() ->
       choose_direction({direction, 0}, self(), State)),
     ?assertEqual({reply, {invalid_move, invalid_direction}, choose_direction, State},
       choose_direction({direction, 7}, self(), State)).
+
+invalid_direction_outside_map_test() ->
+    % reset RNG to get a roll of 4 on d6
+	random:seed(1, 1, 1000),
+	State = basic_scenario_test_state(),
+
+    ?assertEqual({reply, {invalid_move, map_bounds_exceeded}, choose_direction, State},
+      choose_direction({direction, 1}, self(), State)).
 
 win_condition_test() ->
     Player = survival_player:new_player(),
@@ -641,7 +677,7 @@ animal_roll_forest_jalait_ranged_test() ->
 	random:seed(1, 1, 1000),
 	
 	Result = choose_direction({direction, 3}, self(), StateData),
-    {reply, ok, ranged_combat, UpdatedStateData} = Result,
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, #monster{atom=Animal}} = UpdatedStateData#state.combat,
 	?assertEqual(ranged, Range),
 	?assertEqual(jalait, Animal),
@@ -658,7 +694,7 @@ animal_roll_forest_jalait_skip_ranged_test() ->
 	random:seed(1, 1, 1000),
 	
 	Result = choose_direction({direction, 3}, self(), StateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, #monster{atom=Animal}} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(jalait, Animal),
@@ -675,6 +711,18 @@ no_animal_roll_test() ->
 	?assertEqual({}, UpdatedStateData#state.combat),
 	ok.
 
+skip_ranged_combat_test() ->
+	StateData = basic_scenario_test_state(),
+	
+	% add ranged combat to state
+	% corydal will be hit on a roll of 1
+	CombatStateData = StateData#state{combat={ranged, #monster{atom=corydal, mname="Corydal", category=1}}},
+	
+	Result = combat({done}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
+	?assertEqual({melee, #monster{atom=corydal, mname="Corydal", category=1}}, UpdatedStateData#state.combat),
+	ok.
+
 ranged_combat_hit_test() ->
 	StateData = basic_scenario_test_state(),
 	
@@ -685,7 +733,7 @@ ranged_combat_hit_test() ->
 	% reset RNG to get a roll of 1 on d6
 	random:seed(1, 1, 1),
 	
-	Result = ranged_combat({weapon, 2}, self(), CombatStateData),
+	Result = combat({weapon, 2}, self(), CombatStateData),
     {reply, ok, choose_direction, UpdatedStateData} = Result,
 	?assertEqual({}, UpdatedStateData#state.combat),
 	ok.
@@ -700,8 +748,8 @@ ranged_combat_miss_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	Result = ranged_combat({weapon, 2}, self(), CombatStateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	Result = combat({weapon, 2}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
 	?assertEqual({melee, #monster{atom=maizar, mname="Maizar", category=4}}, UpdatedStateData#state.combat),
 	ok.
 
@@ -722,7 +770,7 @@ melee_combat_hit_test() ->
 	{Ref, Weapon} = lists:nth(WeaponChoice, CombatStateData#state.player#player.weapons),
 	InitialAmmo = Weapon#weapon.rounds,
 	
-	Result = melee_combat({weapon, WeaponChoice}, self(), CombatStateData),
+	Result = combat({weapon, WeaponChoice}, self(), CombatStateData),
     {reply, ok, choose_direction, UpdatedStateData} = Result,
 	?assertEqual({}, UpdatedStateData#state.combat),
 	{Ref, ShotWeapon} = lists:nth(WeaponChoice, UpdatedStateData#state.player#player.weapons),
@@ -739,8 +787,8 @@ melee_combat_miss_and_be_missed_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	Result = melee_combat({weapon, 1}, self(), CombatStateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	Result = combat({weapon, 1}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, Animal} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=0}, Animal),
@@ -756,8 +804,8 @@ melee_combat_miss_and_be_hit_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	Result = melee_combat({weapon, 1}, self(), CombatStateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	Result = combat({weapon, 1}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, Animal} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=6}, Animal),
@@ -778,7 +826,7 @@ melee_combat_miss_and_be_killed_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	{stop, normal, lost_game, LostStateData} = melee_combat({weapon, 1}, self(), CombatStateData),
+	{stop, normal, lost_game, LostStateData} = combat({weapon, 1}, self(), CombatStateData),
 	?assertEqual(0, LostStateData#state.player#player.ws),
 	ok.
 
@@ -792,8 +840,8 @@ melee_combat_done_and_be_missed_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	Result = melee_combat({done}, self(), CombatStateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	Result = combat({done}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, Animal} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=0}, Animal),
@@ -809,8 +857,8 @@ melee_combat_done_and_be_hit_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	Result = melee_combat({done}, self(), CombatStateData),
-    {reply, ok, melee_combat, UpdatedStateData} = Result,
+	Result = combat({done}, self(), CombatStateData),
+    {reply, ok, combat, UpdatedStateData} = Result,
 	{Range, Animal} = UpdatedStateData#state.combat,
 	?assertEqual(melee, Range),
 	?assertEqual(#monster{atom=maizar, mname="Maizar", category=4, attack=6}, Animal),
@@ -831,14 +879,13 @@ melee_combat_done_and_be_killed_test() ->
 	% reset RNG to get a roll of 4 on d6
 	random:seed(1, 1, 1000),
 	
-	{stop, normal, lost_game, LostStateData} = melee_combat({done}, self(), CombatStateData),
+	{stop, normal, lost_game, LostStateData} = combat({done}, self(), CombatStateData),
 	?assertEqual(0, LostStateData#state.player#player.ws),
 	ok.
 
 bad_input_state_change_test() ->
 	StateData = basic_scenario_test_state(),
-	{reply, ok, melee_combat, StateData} = melee_combat({badinput}, self(), StateData),
-	{reply, ok, ranged_combat, StateData} = ranged_combat({badinput}, self(), StateData),
+	{reply, ok, combat, StateData} = combat({badinput}, self(), StateData),
 	{reply, ok, choose_direction, StateData} = choose_direction({badinput}, self(), StateData).
 
 % test repeatedly selecting done for movement

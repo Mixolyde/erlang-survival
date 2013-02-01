@@ -76,8 +76,7 @@ is_valid_weapon(ranged, Weapon = #weapon{rounds=Rounds}) ->
     if
 		IsRanged, is_integer(Rounds) andalso Rounds > 0 ->
 			true;
-		IsRanged, Rounds == unlimited ->
-			true;
+		% there are no range weapons with unlimited ammo to check
         true ->
             %all other weapons are invalid
 			false
